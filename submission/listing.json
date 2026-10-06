@@ -8,7 +8,9 @@
     "en-US": "Keeps completed chat-history segments about 15 seconds ahead of Kick VOD playback. Preserves Kick's native chat interface, timestamps, replies, badges, and emotes. Includes local buffer diagnostics and an enable switch. Works only on recognized Kick website builds; unsupported builds are left unchanged. No analytics or remote reporting. The Kick page continues its usual history requests to Kick. Reload a VOD after installation or changing the enable switch. Firefox desktop only. Independent of Kick and Mozilla.",
     "ru": "Поддерживает запас уже загруженной истории чата примерно на 15 секунд вперёд. Сохраняет родной интерфейс Kick, время сообщений, ответы, значки и эмоуты. Есть локальная диагностика буфера и переключатель включения. Работает с распознанными версиями сайта; незнакомый код остаётся без изменений. Без аналитики и удалённой отправки отчётов. Страница Kick продолжает обычные запросы истории к Kick. После установки или переключения перезагрузите запись. Для настольного Firefox. Независимое дополнение, не связано с Kick и Mozilla."
   },
-  "categories": ["other"],
+  "categories": ["photos-music-videos"],
+  "amo_url": "https://addons.mozilla.org/firefox/addon/kick-vod-chat-fix/",
+  "status_checked_2026_10_06": "Awaiting Review",
   "license": "MIT",
   "requires_payment": false,
   "support_url": "https://github.com/szanko02/kick-vod-chat-fix/issues",

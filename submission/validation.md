@@ -10,6 +10,10 @@ Verified on 6 October 2026. Runtime code has no third-party dependencies.
   sender validation, storage failures, and live/VOD navigation.
 - `npm run lint`: 0 errors, 0 notices, 0 warnings.
 - `npm run build`: deterministic ZIP/XPI; only `extension/` is packaged.
+- Extracting the review source archive and running its build script produced
+  the same final XPI SHA-256.
+- Mozilla's upload validator: no errors or warnings. Version 1.0.0 submitted
+  on 6 October 2026; store status at submission is Awaiting Review.
 
 ## Firefox and actual Kick playback
 
