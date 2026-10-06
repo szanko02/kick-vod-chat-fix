@@ -1,0 +1,54 @@
+Purpose
+Kick VOD replay chat periodically requests five-second history pages. The
+original request timer advances on attempted requests, with no completed-page
+headroom. Delays and cancelled overlapping requests can cause messages to
+appear in bursts after several minutes. This extension replaces only the
+recognized replay query/timer segment, maintaining conservative completed
+history coverage about 15 seconds ahead of playback.
+
+Code review
+The runtime is in extension/ and has no third-party dependencies, bundling,
+transpilation, obfuscation, eval, Function constructor, remote imports, or
+remote adapter updates. The minified strings describe known website segments,
+not obfuscated extension logic. Matching allows bijective variable renames and
+numeric module-import IDs, while preserving properties, literals, operators,
+order and adjacency. Quoted/commented code cannot supply executable anchors;
+ambiguous matches fail closed.
+The replacement implementation is readable local packaged code. Original
+Kick scripts continue to execute only in Kick's page; the extension does not
+download or execute those scripts in its own privileged context. It uses
+Firefox's documented webRequest.filterResponseData API during onBeforeRequest
+to transform a known segment of the website response. It does not change CSP
+or security headers, or modify third-party React/TanStack library code.
+
+Permissions and safeguards
+Only kick.com and assets.kick.com are allowed. webRequest/webRequestBlocking
+are needed for response filtering; storage saves the enable preference.
+Unknown or ambiguous signatures and invalid UTF-8 pass through byte for byte.
+Buffering is bounded and filters must close or disconnect. Live streams and
+other sites retain their native behavior. The native replay renderer,
+message timestamps, replies, badges, and emotes are preserved.
+
+Data
+No extension-originated network requests or data collection. The page's
+native Kick chat-history requests continue with the normal channel/time
+parameters. Local numeric diagnostics exclude chat text and usernames.
+
+Test procedure
+Install in Firefox desktop 142 or newer. Open a currently available public
+Kick channel VOD, allow chat history to load, and play for several minutes.
+Use the toolbar popup to inspect the patch status and buffer. Test pause,
+resume, a 5-10 second backwards seek, a forward seek, and 2x playback.
+Toggle the extension off/on and reload the VOD to apply each change.
+Repeat a cached reload; response filtering must still apply. Open a live
+channel and verify that its native chat is unaffected. No Kick login is
+required for public VOD playback. A changed unsupported site build must show
+a clear unsupported status and leave the original script intact.
+
+Reproduction
+Run npm ci, npm test, npm run lint, npm run build. Build packages only
+extension/ without minifying or compiling code. Research downloads, QA
+dependencies, legacy code, tests, and publishing documents are not runtime
+files. Verification results and remaining limitations are recorded in
+submission/validation.md. The public source is available at
+https://github.com/szanko02/kick-vod-chat-fix.

@@ -1,0 +1,1 @@
+getInfiniteHistoryByChannel:(e,n)=>(0,t.infiniteQueryOptions)({queryKey:["WebChatHistory","getHistoryByChannel",e,n],queryFn:({signal:t,pageParam:n})=>o(t,e,n.start_time),initialPageParam:{start_time:n},getNextPageParam:(e,t,n)=>{if(e?.data)return{start_time:new Date(new Date(n.start_time).getTime()+5e3).toISOString()}}}),getInfiniteHistoryByChannelAndThread

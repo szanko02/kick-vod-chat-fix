@@ -1,0 +1,17 @@
+{
+  "name": "kick-replay-chat-fix",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "lint": "web-ext lint --source-dir extension --warnings-as-errors",
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "5.104.1",
+    "react": "19.3.0",
+    "react-test-renderer": "19.3.0",
+    "web-ext": "10.7.0"
+  }
+}

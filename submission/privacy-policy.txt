@@ -1,0 +1,19 @@
+Kick VOD Chat Fix privacy policy
+
+The extension has no analytics, advertising, telemetry, remote configuration,
+or external reporting service. It does not collect chat messages, usernames,
+account credentials, cookies, browsing history, or identifiers for its author.
+
+The only saved setting is whether the fix is enabled. It stays in Firefox's
+local extension storage. Playback time, buffer size, request state, and other
+numeric diagnostics stay in the browser and are not automatically uploaded.
+The user may select and copy the diagnostic report themselves.
+
+The extension modifies the replay loading logic in a recognized public Kick
+website script. Kick's own page continues to request chat history from Kick,
+using the channel identifier and the replay timestamp, under Kick's own
+privacy policy. The extension does not make separate network requests, read
+authentication cookies, or send data to its author or another service.
+
+Uninstalling removes the extension's saved setting. There is no server-side
+extension data to delete. This extension is independent of Kick and Mozilla.

@@ -1,0 +1,78 @@
+[
+  {
+    "label": "baseline-3min",
+    "version": "156.0.1",
+    "samples": 180,
+    "error": null,
+    "lastMessageAgeMaxSeconds": 5.52,
+    "lastMessageAgeP95Seconds": 4.11,
+    "bufferMinSeconds": null,
+    "bufferMaxSeconds": null,
+    "chatRendered": true,
+    "artifactSha256": null,
+    "exercises": []
+  },
+  {
+    "label": "final-package",
+    "version": "156.0.1",
+    "samples": 35,
+    "error": null,
+    "lastMessageAgeMaxSeconds": 1.86,
+    "lastMessageAgeP95Seconds": 0.84,
+    "bufferMinSeconds": 13.37,
+    "bufferMaxSeconds": 19.2,
+    "chatRendered": true,
+    "artifactSha256": "bd5533864efb460cdf0d06b841ee6362ea71f25fa716603f6509b2a69290caf4",
+    "exercises": [
+      {
+        "name": "cached-reload",
+        "videoReady": true,
+        "bufferObserved": true
+      }
+    ]
+  },
+  {
+    "label": "release-verified",
+    "version": "156.0.1",
+    "samples": 300,
+    "error": null,
+    "lastMessageAgeMaxSeconds": 4.2,
+    "lastMessageAgeP95Seconds": 2.86,
+    "bufferMinSeconds": 13.03,
+    "bufferMaxSeconds": 19.94,
+    "chatRendered": true,
+    "artifactSha256": "fb04548b317d9ec7bcb35b48587760d45355651800446a1fedc0d3df7b75fc37",
+    "exercises": [
+      {
+        "name": "pause",
+        "videoReady": true,
+        "bufferObserved": true
+      },
+      {
+        "name": "resume",
+        "videoReady": true,
+        "bufferObserved": true
+      },
+      {
+        "name": "backward-10sec",
+        "videoReady": true,
+        "bufferObserved": true
+      },
+      {
+        "name": "forward-60sec",
+        "videoReady": true,
+        "bufferObserved": true
+      },
+      {
+        "name": "rate-2x",
+        "videoReady": true,
+        "bufferObserved": true
+      },
+      {
+        "name": "cached-reload",
+        "videoReady": false,
+        "bufferObserved": false
+      }
+    ]
+  }
+]

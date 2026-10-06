@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kick VOD Chat Fix</title>
+  <link rel="stylesheet" href="popup.css">
+  <script src="popup.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1 data-i18n="extensionName"></h1>
+    <label class="toggle">
+      <input id="enabled" type="checkbox">
+      <span data-i18n="enabled"></span>
+    </label>
+    <p class="hint" data-i18n="reloadHint"></p>
+    <section aria-live="polite">
+      <h2 data-i18n="statusLabel"></h2>
+      <p id="status"></p>
+    </section>
+    <button id="reload" type="button" data-i18n="reload"></button>
+    <section>
+      <h2 data-i18n="diagnosticsLabel"></h2>
+      <p id="metrics"></p>
+    </section>
+    <p class="privacy" data-i18n="privacy"></p>
+  </main>
+</body>
+</html>
