@@ -25,7 +25,7 @@ test('recognizes the exact stored-page query contract', async () => {
 });
 
 test('patches only the extracted current and legacy modules', async () => {
-  for (const name of ['current-module.js', 'legacy-module.js']) {
+  for (const name of ['current-module.js', 'legacy-module.js', 'october-14-module.js']) {
     const source = await fixture(name);
     const result = globalThis.KCFSourceRewrite.adaptBundleSource(source, { contractVerified: true });
     assert.equal(result.status, 'applied', `${name}: ${result.reason || result.status}`);

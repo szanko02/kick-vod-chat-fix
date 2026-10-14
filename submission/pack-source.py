@@ -11,7 +11,7 @@ target.parent.mkdir(exist_ok=True)
 files=[]
 for folder in ['extension','tests','scripts']:
     files.extend(p for p in (root/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
-for name in ['.gitignore','.gitattributes','README.md','LICENSE','package.json','package-lock.json',
+for name in ['.gitignore','.gitattributes','README.md','CHANGELOG.md','LICENSE','package.json','package-lock.json',
              'submission/privacy-policy.txt','submission/reviewer-notes.txt',
              'submission/validation.md','submission/firefox-results.json','submission/listing.json','submission/pack-source.py']:
     path=root/name

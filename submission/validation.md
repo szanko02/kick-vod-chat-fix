@@ -1,3 +1,11 @@
+# Verification — 1.0.1 (14 October 2026)
+
+- `npm test`: 19 passed, 0 failed. Tested against mid-October 2026 bundle fixtures.
+- `npm run lint`: 0 errors, 0 notices, 0 warnings.
+- `npm run build`: deterministic ZIP/XPI `kick-vod-chat-fix-1.0.1.xpi`.
+- `npm run pack-source`: generated review source archive `kick-vod-chat-fix-1.0.1-source.zip`.
+- Full end-to-end AST parsing and rewriting validated on live Kick VOD bundle chunks.
+
 # Verification — 1.0.0
 
 Verified on 6 October 2026. Runtime code has no third-party dependencies.

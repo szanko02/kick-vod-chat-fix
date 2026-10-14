@@ -3,7 +3,7 @@
   const MAX_RESPONSE = 2 * 1024 * 1024;
   const MAX_BUFFERED = 16 * 1024 * 1024;
   const RESPONSE_TIMEOUT_MS = 6000;
-  const CONTRACT_WAIT_MS = 1200;
+  const CONTRACT_WAIT_MS = 2500;
   const enabledState = { ready: false, enabled: false };
   const bufferedRequests = new Map();
   const pageStates = new Map();

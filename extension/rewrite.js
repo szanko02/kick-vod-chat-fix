@@ -27,6 +27,18 @@
         const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('r')},useInfiniteQuery:KCF_options_v3=>(0,${v('a')}.useInfiniteQuery)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('o')}.useInfiniteChatHistoryByChannel)({channelId:${v('C')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('w')},progress:${v('S')},isSliding:${v('A')},channelId:${v('C')}})`;
         return `,[${v('O')},${v('k')}]=(0,${v('r')}.useState)(!1),KCF_replay_state_v3=${hook},${v('D')}=KCF_replay_state_v3.data,${v('B')}=KCF_replay_state_v3.fetchNextPage,${v('I')}=KCF_replay_state_v3.displayMs;`;
       }
+    },
+    {
+      id: 'october-14-2026',
+      imports: 'var t=e.i(92506),a=e.i(700712),r=e.i(963448),s=e.i(123499),i=e.i(213039),n=e.i(159838),o=e.i(820476),l=e.i(948590),u=e.i(119599),d=e.i(633841),c=e.i(149803),h=e.i(152098);',
+      componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:m,clipDialogProgress:g,withoutOpenIdentity:p=!1,withoutOpenThread:f=!1,className:y})=>{let v=new Date(e).getTime(),C=(0,a.useRef)(null),{channelId:b}=(0,u.useChatroomContext)(),x=(0,n.usePlayerStore)(e=>e.currentProgressInMs),w=(0,n.usePlayerStore)(e=>e.isSeekbarSliding),S=g??x',
+      before: ',E=(0,a.useRef)(0),B=(0,a.useRef)(-2500),[k,_]=(0,a.useState)(0),[q,j]=(0,a.useState)(e),[P,F]=(0,a.useState)(!1),{data:I,fetchNextPage:T}=(0,r.useInfiniteQuery)({...(0,i.useInfiniteChatHistoryByChannel)({channelId:b,startTime:q}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!w)});(0,a.useEffect)(()=>{if(S-E.current>2e3||S<E.current){E.current=S,B.current=S-2500,_(S),j(new Date(v+S).toISOString());return}S>k+500&&_(S),E.current=S,S-B.current>=5e3&&(T(),B.current=S)},[k,T,S,v]);',
+      filter: 'N.filter(e=>new Date(e.created_at).getTime()<=v+k)',
+      build(source, names) {
+        const v = name => names.get(name) || name;
+        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('a')},useInfiniteQuery:KCF_options_v3=>(0,${v('r')}.useInfiniteQuery)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('i')}.useInfiniteChatHistoryByChannel)({channelId:${v('b')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('v')},progress:${v('S')},isSliding:${v('w')},channelId:${v('b')}})`;
+        return `,[${v('P')},${v('F')}]=(0,${v('a')}.useState)(!1),KCF_replay_state_v3=${hook},${v('I')}=KCF_replay_state_v3.data,${v('T')}=KCF_replay_state_v3.fetchNextPage,${v('k')}=KCF_replay_state_v3.displayMs;`;
+      }
     }
   ];
 
