@@ -341,6 +341,28 @@
       : null;
   }
 
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function matchFilter(source, adapter, mapping, segmentEnd) {
+    if (source.split(adapter.filter).length - 1 === 1) {
+      const idx = source.indexOf(adapter.filter, segmentEnd);
+      if (idx >= segmentEnd) return true;
+    }
+    const filterParts = adapter.filter.match(/^[A-Za-z_$][A-Za-z0-9_$]*(\.filter\(e=>new Date\(e\.created_at\)\.getTime\(\)<=)([A-Za-z_$][A-Za-z0-9_$]*)\+([A-Za-z_$][A-Za-z0-9_$]*)(\))$/);
+    if (filterParts && mapping) {
+      const [, prefix, startKey, displayKey, suffix] = filterParts;
+      const mappedStart = mapping.get(startKey) || startKey;
+      const mappedDisplay = mapping.get(displayKey) || displayKey;
+      const targetSuffix = prefix + mappedStart + '+' + mappedDisplay + suffix;
+      const pattern = new RegExp('[A-Za-z_$][A-Za-z0-9_$]*' + escapeRegex(targetSuffix), 'g');
+      const occurrences = [...source.matchAll(pattern)];
+      if (occurrences.length === 1 && occurrences[0].index >= segmentEnd) return true;
+    }
+    return false;
+  }
+
   function adaptBundleSource(source, options = {}) {
     if (typeof source !== 'string') return { source, status: 'unchanged', reason: 'invalid-source' };
     const scan = scanJavaScript(source);
@@ -360,8 +382,8 @@
       for (let index = candidates.length - 1; index >= 0 && !match; index--)
         match = matchCanonicalFragment(expectedSource, prefixSource, source, candidates[index]);
       if (!match || markerAt >= match.segmentStart ||
-          match.segmentEnd < markerAt || source.split(adapter.filter).length - 1 !== 1 ||
-          source.indexOf(adapter.filter, match.segmentEnd) < match.segmentEnd) continue;
+          match.segmentEnd < markerAt ||
+          !matchFilter(source, adapter, match.mapping, match.segmentEnd)) continue;
       if (!options.contractVerified)
         return { source, status: 'unchanged', reason: 'contract-unverified', adapter: adapter.id };
       const replacement = adapter.build(source, match.mapping);

@@ -1,4 +1,4 @@
-# Verification — 1.0.1 (14 October 2026)
+# Verification — 1.0.2 (14 October 2026)
 
 - `npm test`: 19 passed, 0 failed. Tested against mid-October 2026 bundle fixtures.
 - `npm run lint`: 0 errors, 0 notices, 0 warnings.
