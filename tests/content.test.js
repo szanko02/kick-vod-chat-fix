@@ -124,3 +124,157 @@ test('popstate without route change does not re-emit route, and pause prevents s
   intervalHandler();
   assert.equal(sent.filter(m => m.type === 'STATUS' && m.status === 'stale').length, 1);
 });
+
+test('custom seek intercepts ArrowLeft and ArrowRight on VOD without modifying editable inputs', async () => {
+  const source = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
+  const sent = [];
+  const listeners = new Map();
+  let storageChangeListener = null;
+  const video = { currentTime: 50, duration: 100 };
+  let createdElement = null;
+  const document = {
+    documentElement: { getAttribute: () => null, lang: 'en' },
+    querySelector: sel => (sel === 'video' ? video : null),
+    createElement: () => {
+      createdElement = { style: {}, classList: { add() {} }, remove() {}, textContent: '' };
+      return createdElement;
+    },
+    body: { appendChild() {} }
+  };
+  const window = {
+    addEventListener: (name, handler) => listeners.set(name, handler),
+    removeEventListener: name => listeners.delete(name)
+  };
+  class MutationObserver { observe() {} disconnect() {} }
+  const context = {
+    browser: {
+      runtime: {
+        sendMessage: message => { sent.push(message); return Promise.resolve(); },
+        onMessage: { addListener() {} }
+      },
+      storage: {
+        local: { get: () => Promise.resolve({ seekBackward: 10, seekForward: 30 }) },
+        onChanged: { addListener: fn => { storageChangeListener = fn; } }
+      }
+    },
+    document,
+    location: { pathname: '/maddyson/videos/01a10d48-8960-7f24-aade-189d84b44b61' },
+    window,
+    MutationObserver,
+    Date,
+    JSON,
+    setInterval: () => 1,
+    clearInterval: () => {},
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+    Math,
+    Number
+  };
+  vm.runInNewContext(source, context);
+
+  const keydown = listeners.get('keydown');
+  assert.ok(keydown, 'capturing keydown listener should be registered');
+
+  function makeEvent(overrides) {
+    let prevented = false;
+    let stopped = false;
+    return {
+      key: 'ArrowLeft',
+      target: { tagName: 'DIV' },
+      preventDefault: () => { prevented = true; },
+      stopImmediatePropagation: () => { stopped = true; },
+      get isPrevented() { return prevented; },
+      get isStopped() { return stopped; },
+      ...overrides
+    };
+  }
+
+  // 1. Normal ArrowLeft (default: -10s)
+  const leftEv = makeEvent({ key: 'ArrowLeft' });
+  keydown(leftEv);
+  assert.equal(leftEv.isPrevented, true);
+  assert.equal(leftEv.isStopped, true);
+  assert.equal(video.currentTime, 40);
+
+  // 2. Normal ArrowRight (default: +30s)
+  const rightEv = makeEvent({ key: 'ArrowRight' });
+  keydown(rightEv);
+  assert.equal(rightEv.isPrevented, true);
+  assert.equal(rightEv.isStopped, true);
+  assert.equal(video.currentTime, 70);
+
+  // 3. Clamping at upper bound
+  const rightMax = makeEvent({ key: 'ArrowRight' });
+  keydown(rightMax);
+  assert.equal(video.currentTime, 100);
+
+  // 4. Clamping at lower bound
+  video.currentTime = 5;
+  const leftMin = makeEvent({ key: 'ArrowLeft' });
+  keydown(leftMin);
+  assert.equal(video.currentTime, 0);
+
+  // 5. Modifier keys should be ignored
+  video.currentTime = 50;
+  const shiftEv = makeEvent({ key: 'ArrowRight', shiftKey: true });
+  keydown(shiftEv);
+  assert.equal(shiftEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  const ctrlEv = makeEvent({ key: 'ArrowLeft', ctrlKey: true });
+  keydown(ctrlEv);
+  assert.equal(ctrlEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  // 6. Editable targets (inputs, textareas, contenteditable, dialog) should be ignored
+  const inputEv = makeEvent({ key: 'ArrowLeft', target: { tagName: 'INPUT' } });
+  keydown(inputEv);
+  assert.equal(inputEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  const areaEv = makeEvent({ key: 'ArrowRight', target: { tagName: 'TEXTAREA' } });
+  keydown(areaEv);
+  assert.equal(areaEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  const editEv = makeEvent({ key: 'ArrowRight', target: { tagName: 'DIV', isContentEditable: true } });
+  keydown(editEv);
+  assert.equal(editEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  const modalEv = makeEvent({ key: 'ArrowRight', target: { tagName: 'DIV', closest: sel => sel.includes('dialog') ? true : null } });
+  keydown(modalEv);
+  assert.equal(modalEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  // 7. Dynamic settings update via storage change
+  assert.ok(storageChangeListener);
+  storageChangeListener({ seekBackward: { newValue: 5 }, seekForward: { newValue: 15 } }, 'local');
+
+  const customLeft = makeEvent({ key: 'ArrowLeft' });
+  keydown(customLeft);
+  assert.equal(video.currentTime, 45); // 50 - 5 = 45
+
+  const customRight = makeEvent({ key: 'ArrowRight' });
+  keydown(customRight);
+  assert.equal(video.currentTime, 60); // 45 + 15 = 60
+
+  // 8. Consecutive seeks in the same direction accumulate in OSD text
+  video.currentTime = 50;
+  const left1 = makeEvent({ key: 'ArrowLeft' });
+  keydown(left1);
+  assert.equal(createdElement.textContent, '⟲ 5 s');
+
+  const left2 = makeEvent({ key: 'ArrowLeft' });
+  keydown(left2);
+  assert.equal(createdElement.textContent, '⟲ 10 s');
+
+  const left3 = makeEvent({ key: 'ArrowLeft' });
+  keydown(left3);
+  assert.equal(createdElement.textContent, '⟲ 15 s');
+
+  // Switching direction resets accumulation to the new direction
+  const right1 = makeEvent({ key: 'ArrowRight' });
+  keydown(right1);
+  assert.equal(createdElement.textContent, '⟳ 15 s');
+});

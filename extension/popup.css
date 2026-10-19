@@ -9,4 +9,10 @@ p { margin: 0; }
 input, button { accent-color: #53fc18; }
 button { min-height: 38px; border: 1px solid #53fc18; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
+.seek-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 2px; }
+.seek-row label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #ddd; }
+.input-unit { display: flex; align-items: center; gap: 6px; }
+.input-unit input { width: 100%; min-height: 32px; padding: 4px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #222; color: #fff; font: inherit; font-weight: 600; }
+.input-unit input:focus { border-color: #53fc18; outline: none; }
+.input-unit span { color: #888; font-size: 12px; }
 .privacy { color: #aaa; font-size: 12px; }

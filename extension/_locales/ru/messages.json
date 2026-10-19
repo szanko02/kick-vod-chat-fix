@@ -20,5 +20,10 @@
   "fetchingYes": { "message": "да" },
   "fetchingNo": { "message": "нет" },
   "errorYes": { "message": "да" },
-  "errorNo": { "message": "нет" }
+  "errorNo": { "message": "нет" },
+  "seekSettingsLabel": { "message": "Шаг перемотки стрелками" },
+  "seekBackwardLabel": { "message": "Назад (←)" },
+  "seekForwardLabel": { "message": "Вперёд (→)" },
+  "secondsUnit": { "message": "сек" },
+  "seekHint": { "message": "Действует для клавиш ← и → в записях (VOD)." }
 }

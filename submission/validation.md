@@ -1,3 +1,10 @@
+# Verification — 1.1.0 (19 October 2026)
+
+- `npm test`: 22 passed, 0 failed. Comprehensive coverage of custom seek intervals, keyboard capture, input filtering, storage persistence, and popup synchronization.
+- `npm run lint`: 0 errors, 0 notices, 0 warnings.
+- `npm run build`: deterministic ZIP/XPI `kick-vod-chat-fix-1.1.0.xpi`.
+- `npm run pack-source`: generated review source archive `kick-vod-chat-fix-1.1.0-source.zip`.
+
 # Verification — 1.0.3 (19 October 2026)
 
 - `npm test`: 20 passed, 0 failed. Tested against mid-October 2026 bundle fixtures.

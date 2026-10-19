@@ -20,5 +20,10 @@
   "fetchingYes": { "message": "yes" },
   "fetchingNo": { "message": "no" },
   "errorYes": { "message": "yes" },
-  "errorNo": { "message": "no" }
+  "errorNo": { "message": "no" },
+  "seekSettingsLabel": { "message": "Arrow Seek Interval" },
+  "seekBackwardLabel": { "message": "Rewind (←)" },
+  "seekForwardLabel": { "message": "Forward (→)" },
+  "secondsUnit": { "message": "sec" },
+  "seekHint": { "message": "Applies to ← and → arrow keys in VODs." }
 }

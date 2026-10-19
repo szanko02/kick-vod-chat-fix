@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-19
+
+### Added
+- Customizable VOD seek intervals (backward and forward, 1–300 seconds; defaults: 10s backward, 30s forward).
+- Extension popup settings section allowing real-time modification of seek intervals with English and Russian localizations.
+- On-Screen Display (OSD) badge displaying seek distance and direction when navigating VODs with Arrow keys.
+- Capture-phase keyboard handler intercepting `ArrowLeft` and `ArrowRight` on VOD pages while ignoring text inputs, textareas, and modal dialogs.
+- Automatic live synchronization of seek settings between popup and active VOD tabs via `browser.storage.onChanged`.
+
 ## [1.0.3] - 2026-10-19
 
 ### Fixed

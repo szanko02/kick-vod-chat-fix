@@ -11,9 +11,17 @@
   const contractWaiters = new Map();
   let bufferedTotal = 0;
   let persistedEnabled = true;
+  let persistedSeekBackward = 10;
+  let persistedSeekForward = 30;
   let enabledRevision = 0;
   let storageQueue = Promise.resolve();
   let storageReadyPromise = Promise.resolve();
+
+  function parseSeekSeconds(value, fallback) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.max(1, Math.min(300, Math.round(num)));
+  }
 
   function badge(tabId, status) {
     const badgeData = {
@@ -236,6 +244,23 @@
     }
   }
 
+  async function setSeek(backward, forward) {
+    await storageReadyPromise;
+    persistedSeekBackward = backward;
+    persistedSeekForward = forward;
+    const write = storageQueue.catch(() => {}).then(() => browser.storage.local.set({
+      seekBackward: backward,
+      seekForward: forward
+    }));
+    storageQueue = write;
+    try {
+      await write;
+      return { ok: true, seekBackward: backward, seekForward: forward };
+    } catch {
+      return { ok: false, seekBackward: backward, seekForward: forward };
+    }
+  }
+
   function isKickTopFrame(sender) {
     try {
       return Boolean(sender.tab) && sender.frameId === 0 &&
@@ -318,6 +343,11 @@
     if (message?.type === 'SET_ENABLED' && isPopup(sender) && typeof message.enabled === 'boolean') {
       return setEnabled(message.enabled);
     }
+    if (message?.type === 'SET_SEEK' && isPopup(sender)) {
+      const backward = parseSeekSeconds(message.seekBackward, 10);
+      const forward = parseSeekSeconds(message.seekForward, 30);
+      return setSeek(backward, forward);
+    }
     if (message?.type === 'GET_STATE' && isPopup(sender)) return activeState();
     if (message?.type === 'RELOAD_VOD' && isPopup(sender)) return reloadActiveVod();
     return undefined;
@@ -334,7 +364,9 @@
       enabled: enabledState.enabled,
       status: !isVod ? 'inactive' : enabledState.enabled ? page.status || 'checking' : 'disabled',
       isVod,
-      metrics: isVod ? page.metrics || null : null
+      metrics: isVod ? page.metrics || null : null,
+      seekBackward: persistedSeekBackward,
+      seekForward: persistedSeekForward
     };
   }
 
@@ -349,15 +381,25 @@
   }
 
   browser.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.enabled) {
-      persistedEnabled = changes.enabled.newValue === true;
-      if (enabledRevision === 0 || persistedEnabled === enabledState.enabled)
-        applyEnabled(persistedEnabled);
+    if (area === 'local') {
+      if (changes.enabled) {
+        persistedEnabled = changes.enabled.newValue === true;
+        if (enabledRevision === 0 || persistedEnabled === enabledState.enabled)
+          applyEnabled(persistedEnabled);
+      }
+      if (changes.seekBackward) {
+        persistedSeekBackward = parseSeekSeconds(changes.seekBackward.newValue, 10);
+      }
+      if (changes.seekForward) {
+        persistedSeekForward = parseSeekSeconds(changes.seekForward.newValue, 30);
+      }
     }
   });
 
-  storageReadyPromise = browser.storage.local.get('enabled').then(values => {
-    persistedEnabled = values.enabled !== false;
+  storageReadyPromise = browser.storage.local.get(['enabled', 'seekBackward', 'seekForward']).then(values => {
+    persistedEnabled = values?.enabled !== false;
+    persistedSeekBackward = parseSeekSeconds(values?.seekBackward, 10);
+    persistedSeekForward = parseSeekSeconds(values?.seekForward, 30);
     applyEnabled(persistedEnabled);
   }).catch(() => applyEnabled(false));
 })();

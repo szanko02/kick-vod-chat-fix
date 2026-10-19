@@ -8,6 +8,8 @@ const enabledInput = document.getElementById('enabled');
 const statusText = document.getElementById('status');
 const reloadButton = document.getElementById('reload');
 const metricsText = document.getElementById('metrics');
+const seekBackwardInput = document.getElementById('seekBackward');
+const seekForwardInput = document.getElementById('seekForward');
 let refreshing = false;
 let closed = false;
 
@@ -39,11 +41,27 @@ async function refresh() {
   const key = statusIds[state.status] || 'statusChecking';
   statusText.textContent = browser.i18n.getMessage(key);
   reloadButton.disabled = !state.isVod;
+  if (seekBackwardInput && !seekBackwardInput.matches?.(':focus') && Number.isInteger(state.seekBackward)) {
+    seekBackwardInput.value = state.seekBackward;
+  }
+  if (seekForwardInput && !seekForwardInput.matches?.(':focus') && Number.isInteger(state.seekForward)) {
+    seekForwardInput.value = state.seekForward;
+  }
   showMetrics(state.metrics);
   } finally {
     refreshing = false;
   }
 }
+
+function saveSeek() {
+  if (!seekBackwardInput || !seekForwardInput) return;
+  const backward = Math.max(1, Math.min(300, parseInt(seekBackwardInput.value, 10) || 10));
+  const forward = Math.max(1, Math.min(300, parseInt(seekForwardInput.value, 10) || 30));
+  browser.runtime.sendMessage({ type: 'SET_SEEK', seekBackward: backward, seekForward: forward }).catch(() => {});
+}
+
+seekBackwardInput?.addEventListener('change', saveSeek);
+seekForwardInput?.addEventListener('change', saveSeek);
 
 enabledInput.addEventListener('change', () => {
   browser.runtime.sendMessage({ type: 'SET_ENABLED', enabled: enabledInput.checked })

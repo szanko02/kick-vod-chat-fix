@@ -14,6 +14,8 @@ async function makeBackground({ deferStorage = false, initialEnabled = true } = 
   const sent = [];
   const tab = { id: 7, url: 'https://kick.com/maddyson/videos/example' };
   let enabled = initialEnabled;
+  let seekBackward = 10;
+  let seekForward = 30;
   let rejectNextWrite = false;
   let resolveStorage;
   let filterCount = 0;
@@ -53,12 +55,23 @@ async function makeBackground({ deferStorage = false, initialEnabled = true } = 
     },
     storage: {
       local: {
-        get: () => deferStorage ? new Promise(resolve => { resolveStorage = resolve; }) : Promise.resolve({ enabled }),
+        get: () => deferStorage ? new Promise(resolve => { resolveStorage = resolve; }) : Promise.resolve({ enabled, seekBackward, seekForward }),
         set: async values => {
           if (rejectNextWrite) { rejectNextWrite = false; throw new Error('storage write failed'); }
-          const oldValue = enabled;
-          enabled = values.enabled;
-          for (const callback of listeners.storage) callback({ enabled: { oldValue, newValue: enabled } }, 'local');
+          const changes = {};
+          if ('enabled' in values) {
+            changes.enabled = { oldValue: enabled, newValue: values.enabled };
+            enabled = values.enabled;
+          }
+          if ('seekBackward' in values) {
+            changes.seekBackward = { oldValue: seekBackward, newValue: values.seekBackward };
+            seekBackward = values.seekBackward;
+          }
+          if ('seekForward' in values) {
+            changes.seekForward = { oldValue: seekForward, newValue: values.seekForward };
+            seekForward = values.seekForward;
+          }
+          for (const callback of listeners.storage) callback(changes, 'local');
         }
       },
       onChanged: { addListener(callback) { listeners.storage.push(callback); } }
@@ -121,10 +134,12 @@ async function makeBackground({ deferStorage = false, initialEnabled = true } = 
   return {
     browser, listeners, filters, badges, sent, tab, request, emit, joined, contentMessage, popupMessage,
     get filterCount() { return filterCount; },
-    resolveStorage(value = { enabled: initialEnabled }) { resolveStorage(value); },
+    resolveStorage(value = { enabled: initialEnabled, seekBackward: 10, seekForward: 30 }) { resolveStorage(value); },
     fireTimersThrough,
     failNextWrite() { rejectNextWrite = true; },
     get enabled() { return enabled; },
+    get seekBackward() { return seekBackward; },
+    get seekForward() { return seekForward; },
     async state() { return popupMessage({ type: 'GET_STATE' }); }
   };
 }
@@ -313,4 +328,29 @@ test('aggregate buffer budget releases the crossing response without retaining i
   assert.deepEqual(app.joined(crossing), new Uint8Array([7]));
   for (const listener of app.listeners.updated) listener(7, { status: 'loading' }, app.tab);
   assert.ok(held.every(filter => filter.disconnected));
+});
+
+test('seek interval settings are persisted in local storage and exposed in popup state', async () => {
+  const app = await makeBackground();
+  const initialState = await app.state();
+  assert.equal(initialState.seekBackward, 10);
+  assert.equal(initialState.seekForward, 30);
+
+  const updated = await app.popupMessage({ type: 'SET_SEEK', seekBackward: 5, seekForward: 15 });
+  assert.equal(updated.ok, true);
+  assert.equal(updated.seekBackward, 5);
+  assert.equal(updated.seekForward, 15);
+  assert.equal(app.seekBackward, 5);
+  assert.equal(app.seekForward, 15);
+
+  const stateAfter = await app.state();
+  assert.equal(stateAfter.seekBackward, 5);
+  assert.equal(stateAfter.seekForward, 15);
+
+  const clamped = await app.popupMessage({ type: 'SET_SEEK', seekBackward: -10, seekForward: 999 });
+  assert.equal(clamped.ok, true);
+  assert.equal(clamped.seekBackward, 1);
+  assert.equal(clamped.seekForward, 300);
+
+  assert.equal(await app.contentMessage({ type: 'SET_SEEK', seekBackward: 20 }), undefined);
 });
