@@ -27,8 +27,10 @@ for (const folder of ['extension', 'tests', 'scripts']) {
 
 const individualFiles = [
   '.gitignore', '.gitattributes', 'README.md', 'CHANGELOG.md', 'LICENSE', 'package.json', 'package-lock.json',
+  '.github/workflows/ci.yml',
   'submission/privacy-policy.txt', 'submission/reviewer-notes.txt',
-  'submission/validation.md', 'submission/firefox-results.json', 'submission/listing.json', 'submission/pack-source.py'
+  'submission/validation.md', 'submission/firefox-results.json', 'submission/listing.json', 'submission/pack-source.py',
+  'submission/icon.png', 'submission/popup-ru.png'
 ];
 
 for (const name of individualFiles) {

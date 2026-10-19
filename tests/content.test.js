@@ -77,3 +77,50 @@ test('document_start survives a missing root and observes it when the parser cre
   listeners.get('pagehide')();
   assert.equal(observers[1].disconnected, true);
 });
+
+test('popstate without route change does not re-emit route, and pause prevents stale status', async () => {
+  const source = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
+  const sent = [];
+  const listeners = new Map();
+  let intervalHandler = null;
+  const attributes = new Map([['data-kcf-buffer-v2', JSON.stringify({
+    version: 3, videoMs: 10000, displayMs: 8000, bufferMs: 15000,
+    pages: 4, fetching: false, error: false, updatedAt: 10
+  })]]);
+  const window = {
+    addEventListener: (name, handler) => listeners.set(name, handler),
+    removeEventListener: name => listeners.delete(name)
+  };
+  class MutationObserver { observe() {} disconnect() {} }
+  let videoPaused = true;
+  let now = 1000000;
+  const context = {
+    browser: { runtime: {
+      sendMessage: message => { sent.push(message); return Promise.resolve(); },
+      onMessage: { addListener() {} }
+    } },
+    document: {
+      documentElement: { getAttribute: key => attributes.get(key) ?? null },
+      querySelector: sel => (sel === 'video' ? { paused: videoPaused } : null)
+    },
+    location: { pathname: '/maddyson/videos/01a10d48-8960-7f24-aade-189d84b44b61' },
+    window, MutationObserver,
+    Date: { now: () => now },
+    JSON,
+    setInterval: fn => { intervalHandler = fn; return 1; },
+    clearInterval: () => {}
+  };
+  vm.runInNewContext(source, context);
+  sent.length = 0;
+
+  listeners.get('popstate')({ state: {} });
+  assert.equal(sent.filter(m => m.type === 'ROUTE').length, 0);
+
+  now += 10000;
+  intervalHandler();
+  assert.equal(sent.filter(m => m.type === 'STATUS' && m.status === 'stale').length, 0);
+
+  videoPaused = false;
+  intervalHandler();
+  assert.equal(sent.filter(m => m.type === 'STATUS' && m.status === 'stale').length, 1);
+});

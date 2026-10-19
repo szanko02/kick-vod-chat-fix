@@ -130,7 +130,6 @@
       query.isError, query.isFetching, aheadMs, queryKeyId, retryTick]);
 
     React.useEffect(() => {
-      const state = control.current;
       const metrics = {
         version: 3,
         videoMs: Number.isFinite(progress) ? progress : null,

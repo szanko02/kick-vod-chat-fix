@@ -1,9 +1,24 @@
 (function (root) {
   const marker = '"ChatroomReplayEntries"';
   const queryContract = 'getNextPageParam:(e,t,n)=>{if(e?.data)return{start_time:new Date(new Date(n.start_time).getTime()+5e3).toISOString()}}';
-  const queryMethod = 'getInfiniteHistoryByChannel:(e,n)=>(0,t.infiniteQueryOptions)({queryKey:["WebChatHistory","getHistoryByChannel",e,n],queryFn:({signal:t,pageParam:n})=>o(t,e,n.start_time),initialPageParam:{start_time:n},' + queryContract + '})';
+  const queryMethods = [
+    'getInfiniteHistoryByChannel:(e,n)=>(0,t.infiniteQueryOptions)({queryKey:["WebChatHistory","getHistoryByChannel",e,n],queryFn:({signal:t,pageParam:n})=>o(t,e,n.start_time),initialPageParam:{start_time:n},' + queryContract + '})',
+    'getInfiniteHistoryByChannel:(e,n)=>(0,t.f)({queryKey:["WebChatHistory","getHistoryByChannel",e,n],queryFn:({signal:t,pageParam:n})=>o(t,e,n.start_time),initialPageParam:{start_time:n},' + queryContract + '})'
+  ];
 
   const adapters = [
+    {
+      id: 'october-19-2026',
+      imports: 'var t=e.i(224034),a=e.i(402260),r=e.i(212171),s=e.i(123499),n=e.i(213039),i=e.i(159838),l=e.i(820476),o=e.i(948590),d=e.i(119599),u=e.i(633841),c=e.i(149803),g=e.i(152098);',
+      componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:f,clipDialogProgress:h,withoutOpenIdentity:m=!1,withoutOpenThread:p=!1,className:v})=>{let y=new Date(e).getTime(),b=(0,a.useRef)(null),{channelId:x}=(0,d.useChatroomContext)(),w=(0,i.f)(e=>e.currentProgressInMs),C=(0,i.f)(e=>e.isSeekbarSliding),j=h??w',
+      before: ',k=(0,a.useRef)(0),S=(0,a.useRef)(-2500),[B,_]=(0,a.useState)(0),[E,P]=(0,a.useState)(e),[T,N]=(0,a.useState)(!1),{data:q,fetchNextPage:L}=(0,r.f)({...(0,n.I)({channelId:x,startTime:E}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!C)});(0,a.useEffect)(()=>{if(j-k.current>2e3||j<k.current){k.current=j,S.current=j-2500,_(j),P(new Date(y+j).toISOString());return}j>B+500&&_(j),k.current=j,j-S.current>=5e3&&(L(),S.current=j)},[B,L,j,y]);',
+      filter: 'U.filter(e=>new Date(e.created_at).getTime()<=y+B)',
+      build(source, names) {
+        const v = name => names.get(name) || name;
+        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('a')},useInfiniteQuery:KCF_options_v3=>(0,${v('r')}.f)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('n')}.I)({channelId:${v('x')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('y')},progress:${v('j')},isSliding:${v('C')},channelId:${v('x')}})`;
+        return `,[${v('T')},${v('N')}]=(0,${v('a')}.useState)(!1),KCF_replay_state_v3=${hook},${v('q')}=KCF_replay_state_v3.data,${v('L')}=KCF_replay_state_v3.fetchNextPage,${v('B')}=KCF_replay_state_v3.displayMs;`;
+      }
+    },
     {
       id: 'legacy-v0.2',
       imports: 'var t=e.i(676381),a=e.i(854670),s=e.i(963448),r=e.i(123499),i=e.i(76117),n=e.i(53275),o=e.i(213039),u=e.i(159838),l=e.i(820476),c=e.i(948590),h=e.i(119599),d=e.i(633841),f=e.i(149803),m=e.i(152098);',
@@ -325,8 +340,6 @@
     if (typeof source !== 'string') return null;
     const scan = scanJavaScript(source);
     if (!scan.valid) return null;
-    const expected = tokenize(queryMethod);
-    if (!expected) return null;
     const declarations = scan.queryDeclarations.filter(offset => {
       let previous = offset - 1;
       while (previous >= 0 && /\s/.test(source[previous])) previous--;
@@ -334,11 +347,17 @@
     });
     if (declarations.length !== 1) return null;
     const offset = declarations[0];
-    const candidate = tokenize(source.slice(offset, offset + 8192), expected.length + 1);
-    return candidate && candidate.length === expected.length + 1 &&
-      compareTokens(expected, candidate.slice(0, expected.length)) && candidate[expected.length].value === ','
-      ? 'october-2026'
-      : null;
+    for (const method of queryMethods) {
+      const expected = tokenize(method);
+      if (!expected) continue;
+      const candidate = tokenize(source.slice(offset, offset + 8192), expected.length + 1);
+      if (candidate && candidate.length === expected.length + 1 &&
+          compareTokens(expected, candidate.slice(0, expected.length)) &&
+          candidate[expected.length].value === ',') {
+        return 'october-2026';
+      }
+    }
+    return null;
   }
 
   function escapeRegex(str) {
@@ -346,21 +365,19 @@
   }
 
   function matchFilter(source, adapter, mapping, segmentEnd) {
-    if (source.split(adapter.filter).length - 1 === 1) {
-      const idx = source.indexOf(adapter.filter, segmentEnd);
-      if (idx >= segmentEnd) return true;
-    }
-    const filterParts = adapter.filter.match(/^[A-Za-z_$][A-Za-z0-9_$]*(\.filter\(e=>new Date\(e\.created_at\)\.getTime\(\)<=)([A-Za-z_$][A-Za-z0-9_$]*)\+([A-Za-z_$][A-Za-z0-9_$]*)(\))$/);
-    if (filterParts && mapping) {
-      const [, prefix, startKey, displayKey, suffix] = filterParts;
-      const mappedStart = mapping.get(startKey) || startKey;
-      const mappedDisplay = mapping.get(displayKey) || displayKey;
-      const targetSuffix = prefix + mappedStart + '+' + mappedDisplay + suffix;
-      const pattern = new RegExp('[A-Za-z_$][A-Za-z0-9_$]*' + escapeRegex(targetSuffix), 'g');
-      const occurrences = [...source.matchAll(pattern)];
-      if (occurrences.length === 1 && occurrences[0].index >= segmentEnd) return true;
-    }
-    return false;
+    const filterParts = adapter.filter.match(
+      /^[A-Za-z_$][A-Za-z0-9_$]*\.filter\(([A-Za-z_$][A-Za-z0-9_$]*)=>new Date\(\1\.created_at\)\.getTime\(\)<=([A-Za-z_$][A-Za-z0-9_$]*)\+([A-Za-z_$][A-Za-z0-9_$]*)\)$/
+    );
+    if (!filterParts) return false;
+    const [, , startKey, displayKey] = filterParts;
+    const mappedStart = escapeRegex(mapping?.get(startKey) || startKey);
+    const mappedDisplay = escapeRegex(mapping?.get(displayKey) || displayKey);
+    const pattern = new RegExp(
+      `[A-Za-z_$][A-Za-z0-9_$]*\\.filter\\(([A-Za-z_$][A-Za-z0-9_$]*)=>new Date\\(\\1\\.created_at\\)\\.getTime\\(\\)<=${mappedStart}\\+${mappedDisplay}\\)`,
+      'g'
+    );
+    const occurrences = [...source.matchAll(pattern)];
+    return occurrences.length === 1 && occurrences[0].index >= segmentEnd;
   }
 
   function adaptBundleSource(source, options = {}) {

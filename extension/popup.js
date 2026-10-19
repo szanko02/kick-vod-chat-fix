@@ -46,10 +46,12 @@ async function refresh() {
 }
 
 enabledInput.addEventListener('change', () => {
-  browser.runtime.sendMessage({ type: 'SET_ENABLED', enabled: enabledInput.checked }).then(refresh);
+  browser.runtime.sendMessage({ type: 'SET_ENABLED', enabled: enabledInput.checked })
+    .then(() => refresh())
+    .catch(() => {});
 });
 reloadButton.addEventListener('click', async () => {
-  const result = await browser.runtime.sendMessage({ type: 'RELOAD_VOD' });
+  const result = await browser.runtime.sendMessage({ type: 'RELOAD_VOD' }).catch(() => null);
   if (!result?.ok) statusText.textContent = browser.i18n.getMessage('reloadFailed');
 });
 refresh().catch(() => {

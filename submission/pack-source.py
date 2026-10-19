@@ -12,14 +12,16 @@ files=[]
 for folder in ['extension','tests','scripts']:
     files.extend(p for p in (root/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
 for name in ['.gitignore','.gitattributes','README.md','CHANGELOG.md','LICENSE','package.json','package-lock.json',
+             '.github/workflows/ci.yml',
              'submission/privacy-policy.txt','submission/reviewer-notes.txt',
-             'submission/validation.md','submission/firefox-results.json','submission/listing.json','submission/pack-source.py']:
+             'submission/validation.md','submission/firefox-results.json','submission/listing.json','submission/pack-source.py',
+             'submission/icon.png','submission/popup-ru.png']:
     path=root/name
     if path.is_file():
         files.append(path)
 with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
     for path in sorted(set(files),key=lambda p:p.relative_to(root).as_posix()):
-        entry=zipfile.ZipInfo(path.relative_to(root).as_posix(),date_time=(2026,1,1,0,0,0))
+        entry=zipfile.ZipInfo(path.relative_to(root).as_posix(),date_time=(1980,1,1,0,0,0))
         entry.compress_type=zipfile.ZIP_DEFLATED
         entry.external_attr=0o644<<16
         archive.writestr(entry,path.read_bytes())

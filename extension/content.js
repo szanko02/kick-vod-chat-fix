@@ -40,7 +40,7 @@
   function checkRoute(force = false) {
     const nextKey = `${location.pathname}`;
     const changed = nextKey !== routeKey;
-    if (!changed && !force) return;
+    if (!changed && force !== true) return;
     routeKey = nextKey;
     routeSequence++;
     isVod = routePattern.test(location.pathname);
@@ -54,7 +54,9 @@
 
   function checkFreshness() {
     checkRoute();
-    if (isVod && lastMetricsAt && Date.now() - lastMetricsAt > 5000 && patchStatus !== 'unsupported') {
+    const video = document.querySelector?.('video');
+    const isPaused = Boolean(video && video.paused);
+    if (isVod && !isPaused && lastMetricsAt && Date.now() - lastMetricsAt > 5000 && patchStatus !== 'unsupported') {
       patchStatus = 'stale';
       send({ type: 'STATUS', status: 'stale' });
     }
@@ -83,13 +85,17 @@
     readMetrics();
   }
 
+  function onPopState() {
+    checkRoute(false);
+  }
+
   function start() {
     if (running) return;
     running = true;
     checkRoute(true);
     observeMetrics();
     timer = setInterval(checkFreshness, 1000);
-    window.addEventListener('popstate', checkRoute);
+    window.addEventListener('popstate', onPopState);
   }
 
   function stop() {
@@ -101,7 +107,7 @@
     observer = null;
     rootObserver?.disconnect();
     rootObserver = null;
-    window.removeEventListener('popstate', checkRoute);
+    window.removeEventListener('popstate', onPopState);
   }
 
   browser.runtime.onMessage.addListener(onPatchStatus);

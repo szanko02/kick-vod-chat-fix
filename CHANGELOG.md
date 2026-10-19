@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-10-19
+
+### Fixed
+- Added adapter `october-19-2026` supporting Kick's mid-October 2026 bundle update where React Query and player store exports were minified into single-letter properties (`.f`, `.I`), resolving the `checking` hanging state.
+- Added support for minified `infiniteQueryOptions` export (`(0,t.f)`) in query contract detection.
+- Fixed false `stale` badge transition (grey `?`) when video playback is paused.
+- Fixed `popstate` event passing `PopStateEvent` object as truthy `force` parameter to `checkRoute`.
+- Added missing `.catch()` promise error handling in popup script for `SET_ENABLED` and `RELOAD_VOD`.
+- Reported `unsupported` status when query contract verification times out instead of leaving status as `checking`.
+
 ## [1.0.2] - 2026-10-14
 
 ### Fixed

@@ -128,7 +128,9 @@
         sendStatus(state.tabId, 'applied');
       } else {
         state.filter.write(toArrayBuffer(bytes));
-        if (result.status === 'unsupported') sendStatus(state.tabId, 'unsupported');
+        if (result.status === 'unsupported' || result.reason === 'contract-unverified') {
+          sendStatus(state.tabId, 'unsupported');
+        }
       }
       state.filter.close();
     } catch {

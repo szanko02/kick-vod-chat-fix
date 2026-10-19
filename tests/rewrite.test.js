@@ -10,6 +10,7 @@ test('recognizes the exact stored-page query contract', async () => {
   const query = await fixture('query-contract.js');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(query), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('latest-query-contract.js')), 'october-2026');
+  assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('october-19-query-contract.js')), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(`const api={${query}};const re=/["']+/;`), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(`const example=${JSON.stringify(query)};`), null);
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract('const example=`' + query + '`;'), null);
@@ -25,7 +26,7 @@ test('recognizes the exact stored-page query contract', async () => {
 });
 
 test('patches only the extracted current and legacy modules', async () => {
-  for (const name of ['current-module.js', 'legacy-module.js', 'october-14-module.js', 'october-14-ru-module.js']) {
+  for (const name of ['current-module.js', 'legacy-module.js', 'october-14-module.js', 'october-14-ru-module.js', 'october-19-module.js']) {
     const source = await fixture(name);
     const result = globalThis.KCFSourceRewrite.adaptBundleSource(source, { contractVerified: true });
     assert.equal(result.status, 'applied', `${name}: ${result.reason || result.status}`);
@@ -78,6 +79,10 @@ test('accepts only bijective alpha-renames and changed numeric module ids', asyn
   assert.match(result.source, /React:reactRef/);
   assert.match(result.source, /\(0,queryApi\.useInfiniteQuery\)/);
   assert.match(result.source, /M\.filter\(e=>new Date\(e\.created_at\)\.getTime\(\)<=w\+I\)/);
+
+  const callbackRenamed = latest.replace('M.filter(e=>new Date(e.created_at).getTime()<=w+I)', 'M.filter(entry=>new Date(entry.created_at).getTime()<=w+I)');
+  const callbackResult = globalThis.KCFSourceRewrite.adaptBundleSource(callbackRenamed, { contractVerified: true });
+  assert.equal(callbackResult.status, 'applied');
 
   for (const changed of [
     latest.replace('channelSlug:f', 'channelSlug:f+1'),
