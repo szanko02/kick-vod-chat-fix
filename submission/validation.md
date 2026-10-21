@@ -1,3 +1,10 @@
+# Verification — 1.1.1 (21 October 2026)
+
+- `npm test`: 22 passed, 0 failed. Validated on October 21 Turbopack bundle fixtures (`october-21-module.js`, `october-21-query-contract.js`).
+- `npm run lint`: 0 errors, 0 notices, 0 warnings.
+- `npm run build`: deterministic ZIP/XPI `kick-vod-chat-fix-1.1.1.xpi`.
+- `npm run pack-source`: generated review source archive `kick-vod-chat-fix-1.1.1-source.zip`.
+
 # Verification — 1.1.0 (19 October 2026)
 
 - `npm test`: 22 passed, 0 failed. Comprehensive coverage of custom seek intervals, keyboard capture, input filtering, storage persistence, and popup synchronization.

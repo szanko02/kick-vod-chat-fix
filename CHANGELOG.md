@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-21
+
+### Fixed
+- Fixed hanging on "Checking recording" state caused by Cloudflare port redirects (`:443`) and chunk query strings (`?dpl=...`) in Kick's October 21 deployment.
+- Added session-wide contract verification persistence (`globalContractVerified`) to eliminate race conditions between query chunk and replay component chunk loading.
+- Broadened document and top frame host verification to seamlessly handle `www.kick.com` and custom subdomains.
+- Extended chunk interception pattern to catch Turbopack chunks with deployment parameters.
+- Added test fixtures and regression coverage for October 21 chunks.
+
 ## [1.1.0] - 2026-10-19
 
 ### Added

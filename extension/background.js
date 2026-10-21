@@ -3,12 +3,13 @@
   const MAX_RESPONSE = 2 * 1024 * 1024;
   const MAX_BUFFERED = 16 * 1024 * 1024;
   const RESPONSE_TIMEOUT_MS = 6000;
-  const CONTRACT_WAIT_MS = 2500;
+  const CONTRACT_WAIT_MS = 5000;
   const enabledState = { ready: false, enabled: false };
   const bufferedRequests = new Map();
   const pageStates = new Map();
   const verifiedContracts = new Set();
   const contractWaiters = new Map();
+  let globalContractVerified = false;
   let bufferedTotal = 0;
   let persistedEnabled = true;
   let persistedSeekBackward = 10;
@@ -82,6 +83,8 @@
   }
 
   function waitForContract(tabId) {
+    if (globalContractVerified) return Promise.resolve(true);
+    if (!Number.isInteger(tabId) || tabId < 0) return Promise.resolve(false);
     if (verifiedContracts.has(tabId)) return Promise.resolve(true);
     return new Promise(resolve => {
       const waiters = contractWaiters.get(tabId) || [];
@@ -101,10 +104,13 @@
   }
 
   function markContract(tabId) {
+    globalContractVerified = true;
     if (!Number.isInteger(tabId) || tabId < 0) return;
     verifiedContracts.add(tabId);
-    for (const waiter of contractWaiters.get(tabId) || []) waiter.finish(true);
-    contractWaiters.delete(tabId);
+    for (const [id, waiters] of contractWaiters) {
+      for (const waiter of waiters) waiter.finish(true);
+    }
+    contractWaiters.clear();
   }
 
   async function finishResponse(state) {
@@ -161,9 +167,17 @@
     return globalThis.KCFSourceRewrite.adaptBundleSource(text, { contractVerified });
   }
 
+  function isKickDocument(url) {
+    if (!url) return true;
+    try {
+      const host = new URL(url).hostname;
+      return host === 'kick.com' || host === 'www.kick.com' || host.endsWith('.kick.com');
+    } catch { return false; }
+  }
+
   function intercept(details) {
     if (!enabledState.ready || !enabledState.enabled || details.tabId < 0 || details.frameId !== 0 ||
-        !/^https:\/\/kick\.com\//.test(details.documentUrl || '') ||
+        !isKickDocument(details.documentUrl) ||
         !/^https:\/\/assets\.kick\.com\/main\/_next\/static\/chunks\/[^/?#]+\.js(?:[?#]|$)/.test(details.url))
       return;
 
@@ -263,15 +277,18 @@
 
   function isKickTopFrame(sender) {
     try {
-      return Boolean(sender.tab) && sender.frameId === 0 &&
-        new URL(sender.url).hostname === 'kick.com';
+      if (!sender.tab || sender.frameId !== 0) return false;
+      const host = new URL(sender.url).hostname;
+      return host === 'kick.com' || host === 'www.kick.com' || host.endsWith('.kick.com');
     } catch { return false; }
   }
 
   function isKickVodUrl(value) {
     try {
       const url = new URL(value);
-      return url.hostname === 'kick.com' && /^\/[^/?#]+\/videos\/[^/?#]+(?:\/|$)/.test(url.pathname);
+      const host = url.hostname;
+      const isKick = host === 'kick.com' || host === 'www.kick.com' || host.endsWith('.kick.com');
+      return isKick && /^\/[^/?#]+\/videos\/[^/?#]+(?:\/|$)/.test(url.pathname);
     } catch { return false; }
   }
 
@@ -285,12 +302,12 @@
   }
 
   browser.webRequest.onBeforeRequest.addListener(intercept, {
-    urls: ['https://assets.kick.com/main/_next/static/chunks/*.js'],
+    urls: ['https://assets.kick.com/main/_next/static/chunks/*'],
     types: ['script']
   }, ['blocking']);
   browser.webRequest.onBeforeRequest.addListener(details => {
     if (details.type === 'main_frame' && details.tabId >= 0) clearTab(details.tabId);
-  }, { urls: ['https://kick.com/*'], types: ['main_frame'] });
+  }, { urls: ['https://kick.com/*', 'https://www.kick.com/*'], types: ['main_frame'] });
   browser.tabs.onRemoved.addListener(clearTab);
   browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.status === 'loading') clearTab(tabId);

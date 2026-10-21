@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "__MSG_extensionName__",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
   "permissions": [
@@ -9,6 +9,7 @@
     "webRequestBlocking",
     "storage",
     "https://kick.com/*",
+    "https://www.kick.com/*",
     "https://assets.kick.com/*"
   ],
   "background": {
@@ -22,7 +23,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://kick.com/*"],
+      "matches": ["https://kick.com/*", "https://www.kick.com/*"],
       "js": ["content.js"],
       "run_at": "document_start",
       "all_frames": false

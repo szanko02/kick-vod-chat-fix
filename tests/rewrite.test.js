@@ -11,6 +11,7 @@ test('recognizes the exact stored-page query contract', async () => {
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(query), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('latest-query-contract.js')), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('october-19-query-contract.js')), 'october-2026');
+  assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('october-21-query-contract.js')), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(`const api={${query}};const re=/["']+/;`), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(`const example=${JSON.stringify(query)};`), null);
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract('const example=`' + query + '`;'), null);
@@ -26,7 +27,7 @@ test('recognizes the exact stored-page query contract', async () => {
 });
 
 test('patches only the extracted current and legacy modules', async () => {
-  for (const name of ['current-module.js', 'legacy-module.js', 'october-14-module.js', 'october-14-ru-module.js', 'october-19-module.js']) {
+  for (const name of ['current-module.js', 'legacy-module.js', 'october-14-module.js', 'october-14-ru-module.js', 'october-19-module.js', 'october-21-module.js']) {
     const source = await fixture(name);
     const result = globalThis.KCFSourceRewrite.adaptBundleSource(source, { contractVerified: true });
     assert.equal(result.status, 'applied', `${name}: ${result.reason || result.status}`);
@@ -35,7 +36,8 @@ test('patches only the extracted current and legacy modules', async () => {
     assert.match(result.source, /maxPages: 24/);
     assert.match(result.source, /refetchOnWindowFocus: false/);
     assert.match(result.source, /created_at/);
-    assert.equal((result.source.match(/ChatroomReplayEntries/g) || []).length, 1);
+    const expectedMatches = name === 'october-21-module.js' ? 2 : 1;
+    assert.equal((result.source.match(/ChatroomReplayEntries/g) || []).length, expectedMatches);
   }
   const latest = await fixture('latest-module.js');
   const serialized = JSON.stringify(latest);
