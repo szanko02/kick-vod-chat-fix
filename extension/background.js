@@ -68,28 +68,26 @@
     return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
   }
 
+  function safeClose(state, disconnect = false) {
+    if (disconnect && !state.stopped) {
+      try {
+        state.filter.disconnect();
+        return;
+      } catch { /* fall through to close */ }
+    }
+    try {
+      state.filter.close();
+    } catch { /* stream already ended or closed */ }
+  }
+
   function writeOriginal(state, disconnect, finalChunk) {
     if (state.released) return;
     try {
       for (const chunk of state.chunks) state.filter.write(toArrayBuffer(chunk));
       if (finalChunk) state.filter.write(toArrayBuffer(finalChunk));
-      if (disconnect && !state.stopped) {
-        try {
-          state.filter.disconnect();
-        } catch {
-          state.filter.close();
-        }
-      } else {
-        state.filter.close();
-      }
+      safeClose(state, disconnect);
     } catch {
-      try {
-        if (!state.stopped) {
-          try { state.filter.disconnect(); } catch { state.filter.close(); }
-        } else {
-          state.filter.close();
-        }
-      } catch { /* stream already ended or closed */ }
+      safeClose(state, disconnect);
     } finally {
       release(state.requestId, state);
     }
@@ -124,10 +122,7 @@
     if (Number.isInteger(tabId) && tabId >= 0) {
       verifiedContracts.add(tabId);
     }
-    const allWaiters = [];
-    for (const waiters of contractWaiters.values()) {
-      allWaiters.push(...waiters);
-    }
+    const allWaiters = Array.from(contractWaiters.values()).flat();
     contractWaiters.clear();
     for (const waiter of allWaiters) {
       waiter.finish(true);
@@ -171,16 +166,8 @@
     } catch {
       try {
         for (const chunk of state.chunks) state.filter.write(toArrayBuffer(chunk));
-        state.filter.close();
-      } catch {
-        try {
-          if (!state.stopped) {
-            try { state.filter.disconnect(); } catch { state.filter.close(); }
-          } else {
-            state.filter.close();
-          }
-        } catch { /* stream already ended or closed */ }
-      }
+      } catch { /* stream write failed */ }
+      safeClose(state, false);
     } finally {
       release(state.requestId, state);
     }
