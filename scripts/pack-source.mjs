@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readdir, readFile, mkdir, writeFile, rm } from 'node:fs/promises';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateRawSync } from 'node:zlib';
@@ -91,7 +91,9 @@ const entries = await Promise.all(uniqueFiles.map(async path => ({
 const archive = makeZip(entries);
 await mkdir(output, { recursive: true });
 const target = join(output, `kick-vod-chat-fix-${manifest.version}-source.zip`);
+await rm(target, { force: true });
 await writeFile(target, archive);
 const digest = createHash('sha256').update(archive).digest('hex');
+await rm(`${target}.sha256`, { force: true });
 await writeFile(`${target}.sha256`, `${digest}  ${basename(target)}\n`, 'utf8');
 console.log(`${basename(target)} ${archive.length} bytes sha256 ${digest} (${entries.length} files)`);

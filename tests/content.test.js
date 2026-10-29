@@ -93,6 +93,7 @@ test('popstate without route change does not re-emit route, and pause prevents s
   };
   class MutationObserver { observe() {} disconnect() {} }
   let videoPaused = true;
+  let videoMounted = true;
   let now = 1000000;
   const context = {
     browser: { runtime: {
@@ -101,7 +102,7 @@ test('popstate without route change does not re-emit route, and pause prevents s
     } },
     document: {
       documentElement: { getAttribute: key => attributes.get(key) ?? null },
-      querySelector: sel => (sel === 'video' ? { paused: videoPaused } : null)
+      querySelector: sel => (sel === 'video' && videoMounted ? { paused: videoPaused } : null)
     },
     location: { pathname: '/maddyson/videos/01a10d48-8960-7f24-aade-189d84b44b61' },
     window, MutationObserver,
@@ -120,6 +121,12 @@ test('popstate without route change does not re-emit route, and pause prevents s
   intervalHandler();
   assert.equal(sent.filter(m => m.type === 'STATUS' && m.status === 'stale').length, 0);
 
+  videoMounted = false;
+  now += 10000;
+  intervalHandler();
+  assert.equal(sent.filter(m => m.type === 'STATUS' && m.status === 'stale').length, 0, 'null video element prevents stale status');
+
+  videoMounted = true;
   videoPaused = false;
   intervalHandler();
   assert.equal(sent.filter(m => m.type === 'STATUS' && m.status === 'stale').length, 1);

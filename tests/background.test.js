@@ -20,18 +20,31 @@ async function makeBackground({ deferStorage = false, initialEnabled = true } = 
   let resolveStorage;
   let filterCount = 0;
   let timerId = 0;
+  let intervalId = 0;
   const timers = new Map();
+  const intervals = new Map();
   function schedule(callback, delay) {
     const id = ++timerId;
     timers.set(id, { callback, delay });
     return id;
   }
   function cancel(id) { timers.delete(id); }
+  function scheduleInterval(callback, delay) {
+    const id = ++intervalId;
+    intervals.set(id, { callback, delay });
+    return id;
+  }
+  function cancelInterval(id) { intervals.delete(id); }
   function fireTimersThrough(delay) {
     for (const [id, timer] of [...timers]) {
       if (timer.delay <= delay) {
         timers.delete(id);
         timer.callback();
+      }
+    }
+    for (const [id, interval] of [...intervals]) {
+      if (interval.delay <= delay) {
+        interval.callback();
       }
     }
   }
@@ -82,11 +95,24 @@ async function makeBackground({ deferStorage = false, initialEnabled = true } = 
     filterResponseData(requestId) {
       filterCount++;
       const output = [];
+      let stopped = false;
+      let onstopHandler = null;
       const filter = {
         output, closed: false, disconnected: false,
+        get stopped() { return stopped; },
+        set onstop(fn) {
+          onstopHandler = () => {
+            stopped = true;
+            return fn();
+          };
+        },
+        get onstop() { return onstopHandler; },
         write(bytes) { output.push(new Uint8Array(bytes).slice()); },
         close() { this.closed = true; },
-        disconnect() { this.disconnected = true; }
+        disconnect() {
+          if (stopped) throw new Error('StreamFilter cannot disconnect after stop');
+          this.disconnected = true;
+        }
       };
       filters.set(requestId, filter);
       return filter;
@@ -97,7 +123,9 @@ async function makeBackground({ deferStorage = false, initialEnabled = true } = 
   const rewrite = await readFile(new URL('../extension/rewrite.js', import.meta.url), 'utf8');
   const context = vm.createContext({
     browser, URL, Date, Promise, TextEncoder, TextDecoder, Uint8Array, Map, Set, Number, Boolean,
-    setTimeout: schedule, clearTimeout: cancel, console
+    setTimeout: schedule, clearTimeout: cancel,
+    setInterval: scheduleInterval, clearInterval: cancelInterval,
+    console
   });
   vm.runInContext(template, context);
   vm.runInContext(rewrite, context);
@@ -252,7 +280,7 @@ test('overflow, stream errors, navigation, and toggle release buffered bytes saf
   const timedOut = app.request('timed-out');
   const partial = encoder.encode('still-valid-prefix');
   app.emit(timedOut, partial);
-  app.fireTimersThrough(6000);
+  app.fireTimersThrough(25000);
   assert.equal(timedOut.disconnected, true);
   assert.deepEqual(app.joined(timedOut), partial);
 
@@ -354,3 +382,109 @@ test('seek interval settings are persisted in local storage and exposed in popup
 
   assert.equal(await app.contentMessage({ type: 'SET_SEEK', seekBackward: 20 }), undefined);
 });
+
+test('out-of-order chunk arrival waits for contract before rewriting replay component', async () => {
+  const app = await makeBackground();
+  app.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const current = await readFile(new URL('./fixtures/latest-module.js', import.meta.url), 'utf8');
+  const query = await readFile(new URL('./fixtures/latest-query-contract.js', import.meta.url), 'utf8');
+
+  // 1. Replay component chunk arrives FIRST
+  const componentFilter = app.request('component');
+  const componentBytes = encoder.encode(current);
+  for (let offset = 0; offset < componentBytes.length; offset += 37) {
+    app.emit(componentFilter, componentBytes.slice(offset, offset + 37));
+  }
+  componentFilter.onstop();
+  await flush();
+
+  // Contract not yet verified: component filter must wait and not close prematurely
+  assert.equal(componentFilter.closed, false, 'component filter waits for contract verification');
+  assert.equal(app.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'applied'), false);
+
+  // 2. Query contract chunk arrives AFTERWARDS
+  const queryFilter = app.request('query');
+  const queryBytes = encoder.encode(query);
+  app.emit(queryFilter, queryBytes.slice(0, 31));
+  app.emit(queryFilter, queryBytes.slice(31));
+  queryFilter.onstop();
+  await flush();
+
+  // Query filter is closed with untouched bytes
+  assert.equal(queryFilter.closed, true, 'query filter closed');
+  assert.equal(decoder.decode(app.joined(queryFilter)), query);
+
+  // Component chunk filter has now completed rewriting and closed cleanly
+  assert.equal(componentFilter.closed, true, 'component filter closed after contract was verified');
+  const rewritten = decoder.decode(app.joined(componentFilter));
+  assert.match(rewritten, /KCF_replay_state_v3/, 'component was successfully rewritten');
+  assert.equal((rewritten.match(/ChatroomReplayEntries/g) || []).length, 1);
+  assert.equal(app.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'applied'), true, 'patch status applied was emitted');
+});
+
+test('stopped filter cleanly closes without throwing disconnect when cleared while awaiting contract', async () => {
+  const app = await makeBackground();
+  app.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const current = await readFile(new URL('./fixtures/latest-module.js', import.meta.url), 'utf8');
+  const componentFilter = app.request('component');
+  app.emit(componentFilter, encoder.encode(current));
+  componentFilter.onstop();
+  await flush();
+
+  assert.equal(componentFilter.closed, false, 'stream is paused awaiting contract');
+  assert.equal(componentFilter.stopped, true, 'stream was stopped upon onstop');
+
+  // Tab navigates or reloads while waiting for contract
+  for (const listener of app.listeners.updated) listener(7, { status: 'loading' }, app.tab);
+  await flush();
+
+  assert.equal(componentFilter.closed, true, 'stopped stream was closed safely instead of throwing invalid disconnect');
+});
+
+test('replay component without query contract times out after CONTRACT_WAIT_MS and falls back to original source with unsupported status', async () => {
+  const app = await makeBackground();
+  app.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const current = await readFile(new URL('./fixtures/latest-module.js', import.meta.url), 'utf8');
+  const componentFilter = app.request('component');
+  const componentBytes = encoder.encode(current);
+  app.emit(componentFilter, componentBytes);
+  componentFilter.onstop();
+  await flush();
+
+  assert.equal(componentFilter.closed, false, 'stream is paused awaiting contract');
+
+  // CONTRACT_WAIT_MS is 20000ms
+  app.fireTimersThrough(20000);
+  await flush();
+
+  assert.equal(componentFilter.closed, true, 'component filter closed safely after contract wait timeout');
+  assert.equal(decoder.decode(app.joined(componentFilter)), current, 'original untouched source was delivered');
+  assert.equal(app.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'unsupported'), true, 'unsupported status was emitted on contract timeout');
+});
+
+test('session-wide contract verification allows immediate rewrite on new tabs without waiting', async () => {
+  const app = await makeBackground();
+  app.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const query = await readFile(new URL('./fixtures/latest-query-contract.js', import.meta.url), 'utf8');
+  const queryFilter = app.request('query-tab7', { tabId: 7 });
+  app.emit(queryFilter, encoder.encode(query));
+  queryFilter.onstop();
+  await flush();
+
+  // Request arrives on a new tab (tabId 8)
+  const current = await readFile(new URL('./fixtures/latest-module.js', import.meta.url), 'utf8');
+  const componentFilter = app.request('component-tab8', { tabId: 8 });
+  app.emit(componentFilter, encoder.encode(current));
+  componentFilter.onstop();
+  await flush();
+
+  // Should immediately be closed and rewritten without entering contract wait
+  assert.equal(componentFilter.closed, true, 'component filter closed immediately on new tab');
+  const rewritten = decoder.decode(app.joined(componentFilter));
+  assert.match(rewritten, /KCF_replay_state_v3/, 'component was immediately rewritten');
+});
+

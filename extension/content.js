@@ -55,7 +55,7 @@
   function checkFreshness() {
     checkRoute();
     const video = document.querySelector?.('video');
-    const isPaused = Boolean(video && video.paused);
+    const isPaused = !video || Boolean(video.paused);
     if (isVod && !isPaused && lastMetricsAt && Date.now() - lastMetricsAt > 5000 && patchStatus !== 'unsupported') {
       patchStatus = 'stale';
       send({ type: 'STATUS', status: 'stale' });

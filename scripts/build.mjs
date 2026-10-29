@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readdir, readFile, mkdir, writeFile, rm } from 'node:fs/promises';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateRawSync } from 'node:zlib';
@@ -71,7 +71,9 @@ if (!entries.some(entry => entry.name === 'manifest.json')) throw new Error('Ext
 const archive = makeZip(entries);
 await mkdir(output, { recursive: true });
 const artifact = join(output, `kick-vod-chat-fix-${manifest.version}.xpi`);
+await rm(artifact, { force: true });
 await writeFile(artifact, archive);
 const digest = createHash('sha256').update(archive).digest('hex');
+await rm(`${artifact}.sha256`, { force: true });
 await writeFile(`${artifact}.sha256`, `${digest}  ${basename(artifact)}\n`, 'utf8');
 process.stdout.write(`${basename(artifact)} ${archive.length} bytes sha256 ${digest}\n`);

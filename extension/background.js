@@ -2,8 +2,8 @@
 (function () {
   const MAX_RESPONSE = 2 * 1024 * 1024;
   const MAX_BUFFERED = 16 * 1024 * 1024;
-  const RESPONSE_TIMEOUT_MS = 6000;
-  const CONTRACT_WAIT_MS = 5000;
+  const RESPONSE_TIMEOUT_MS = 25000;
+  const CONTRACT_WAIT_MS = 20000;
   const enabledState = { ready: false, enabled: false };
   const bufferedRequests = new Map();
   const pageStates = new Map();
@@ -73,10 +73,23 @@
     try {
       for (const chunk of state.chunks) state.filter.write(toArrayBuffer(chunk));
       if (finalChunk) state.filter.write(toArrayBuffer(finalChunk));
-      if (disconnect) state.filter.disconnect();
-      else state.filter.close();
+      if (disconnect && !state.stopped) {
+        try {
+          state.filter.disconnect();
+        } catch {
+          state.filter.close();
+        }
+      } else {
+        state.filter.close();
+      }
     } catch {
-      try { state.filter.disconnect(); } catch { /* stream already ended */ }
+      try {
+        if (!state.stopped) {
+          try { state.filter.disconnect(); } catch { state.filter.close(); }
+        } else {
+          state.filter.close();
+        }
+      } catch { /* stream already ended or closed */ }
     } finally {
       release(state.requestId, state);
     }
@@ -88,7 +101,10 @@
     if (verifiedContracts.has(tabId)) return Promise.resolve(true);
     return new Promise(resolve => {
       const waiters = contractWaiters.get(tabId) || [];
-      const waiter = { resolve, timer: setTimeout(() => finish(false), CONTRACT_WAIT_MS) };
+      const waiter = {
+        resolve,
+        timer: setTimeout(() => finish(false), CONTRACT_WAIT_MS)
+      };
       function finish(value) {
         clearTimeout(waiter.timer);
         const current = contractWaiters.get(tabId) || [];
@@ -105,12 +121,17 @@
 
   function markContract(tabId) {
     globalContractVerified = true;
-    if (!Number.isInteger(tabId) || tabId < 0) return;
-    verifiedContracts.add(tabId);
-    for (const [id, waiters] of contractWaiters) {
-      for (const waiter of waiters) waiter.finish(true);
+    if (Number.isInteger(tabId) && tabId >= 0) {
+      verifiedContracts.add(tabId);
+    }
+    const allWaiters = [];
+    for (const waiters of contractWaiters.values()) {
+      allWaiters.push(...waiters);
     }
     contractWaiters.clear();
+    for (const waiter of allWaiters) {
+      waiter.finish(true);
+    }
   }
 
   async function finishResponse(state) {
@@ -125,7 +146,7 @@
       const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 
       if (browser.runtime.getManifest && rootContract(text)) markContract(state.tabId);
-      let contractVerified = verifiedContracts.has(state.tabId);
+      let contractVerified = globalContractVerified || verifiedContracts.has(state.tabId);
       if (!contractVerified && text.includes('"ChatroomReplayEntries"'))
         contractVerified = await waitForContract(state.tabId);
       if (state.released) return;
@@ -152,7 +173,13 @@
         for (const chunk of state.chunks) state.filter.write(toArrayBuffer(chunk));
         state.filter.close();
       } catch {
-        try { state.filter.disconnect(); } catch { /* stream already ended */ }
+        try {
+          if (!state.stopped) {
+            try { state.filter.disconnect(); } catch { state.filter.close(); }
+          } else {
+            state.filter.close();
+          }
+        } catch { /* stream already ended or closed */ }
       }
     } finally {
       release(state.requestId, state);
@@ -191,6 +218,7 @@
       chunks: [],
       bytes: 0,
       released: false,
+      stopped: false,
       timer: null
     };
     bufferedRequests.set(details.requestId, state);
@@ -206,7 +234,11 @@
       state.bytes += chunk.byteLength;
       bufferedTotal += chunk.byteLength;
     };
-    filter.onstop = () => { void finishResponse(state); };
+    filter.onstop = () => {
+      clearTimeout(state.timer);
+      state.stopped = true;
+      void finishResponse(state);
+    };
     filter.onerror = () => {
       try { filter.disconnect(); } catch { /* stream already ended */ }
       release(details.requestId, state);
@@ -219,8 +251,9 @@
     }
     pageStates.delete(tabId);
     verifiedContracts.delete(tabId);
-    for (const waiter of contractWaiters.get(tabId) || []) waiter.finish(false);
+    const waiters = contractWaiters.get(tabId) || [];
     contractWaiters.delete(tabId);
+    for (const waiter of waiters) waiter.finish(false);
   }
 
   function applyEnabled(enabled) {

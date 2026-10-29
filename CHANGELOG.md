@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-10-28
+
+### Fixed
+- Fixed HTTP channel hanging during Kick initial page loading where `filter.onstop` fired and `finishResponse` waited for contract verification, but `RESPONSE_TIMEOUT_MS` (6000ms) fired prematurely and threw on `filter.disconnect()` without calling `filter.close()`.
+- Increased `RESPONSE_TIMEOUT_MS` to 25000ms (exceeding `CONTRACT_WAIT_MS = 20000ms`).
+- In `background.js`, cancelled `state.timer` on `filter.onstop` and tracked `state.stopped = true`.
+- In `writeOriginal`, ensured `state.filter.close()` is safely called if `state.stopped` is true or if `disconnect()` throws.
+- In `waitForContract` and `markContract`, ensured deterministic `setTimeout` fallback without background polling, safe map iteration, and session-wide verified contract reuse without blocking.
+- In `content.js`, corrected `isPaused` evaluation to `!video || Boolean(video.paused)` to prevent prematurely emitting `stale` status (`?`) when the video element is unmounted or loading.
+- Added adapter support and test fixtures for Kick's October 28 Turbopack bundle.
+- Added comprehensive test coverage for out-of-order chunk arrival, contract wait timeout fallback, session-wide contract verification across tabs, safe filter closure on navigation while awaiting contract, and null video element handling.
+
 ## [1.1.1] - 2026-10-21
 
 ### Fixed

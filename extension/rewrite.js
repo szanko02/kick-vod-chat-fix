@@ -8,6 +8,18 @@
 
   const adapters = [
     {
+      id: 'october-28-2026',
+      imports: 'var t=e.i(224034),a=e.i(402260),r=e.i(212171),s=e.i(178869),n=e.i(123499),i=e.i(213039),l=e.i(159838),o=e.i(948590),u=e.i(119599),d=e.i(633841),c=e.i(149803),g=e.i(152098);',
+      componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:f,clipDialogProgress:h,withoutOpenIdentity:m=!1,withoutOpenThread:p=!1,className:v})=>{let y=new Date(e).getTime(),b=(0,a.useRef)(null),{channelId:w}=(0,u.useChatroomContext)(),x=(0,l.f)(e=>e.currentProgressInMs),C=(0,l.f)(e=>e.isSeekbarSliding),S=h??x',
+      before: ',j=(0,a.useRef)(0),k=(0,a.useRef)(-2500),[E,_]=(0,a.useState)(0),[B,P]=(0,a.useState)(e),[T,N]=(0,a.useState)(!1),{data:L,fetchNextPage:q}=(0,r.f)({...(0,i.I)({channelId:w,startTime:B}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!C)});(0,a.useEffect)(()=>{if(S-j.current>2e3||S<j.current){j.current=S,k.current=S-2500,_(S),P(new Date(y+S).toISOString());return}S>E+500&&_(S),j.current=S,S-k.current>=5e3&&(q(),k.current=S)},[E,q,S,y]);',
+      filter: 'F.filter(e=>new Date(e.created_at).getTime()<=y+E)',
+      build(source, names) {
+        const v = name => names.get(name) || name;
+        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('a')},useInfiniteQuery:KCF_options_v3=>(0,${v('r')}.f)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('i')}.I)({channelId:${v('w')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('y')},progress:${v('S')},isSliding:${v('C')},channelId:${v('w')}})`;
+        return `,[${v('T')},${v('N')}]=(0,${v('a')}.useState)(!1),KCF_replay_state_v3=${hook},${v('L')}=KCF_replay_state_v3.data,${v('q')}=KCF_replay_state_v3.fetchNextPage,${v('E')}=KCF_replay_state_v3.displayMs;`;
+      }
+    },
+    {
       id: 'october-19-2026',
       imports: 'var t=e.i(224034),a=e.i(402260),r=e.i(212171),s=e.i(123499),n=e.i(213039),i=e.i(159838),l=e.i(820476),o=e.i(948590),d=e.i(119599),u=e.i(633841),c=e.i(149803),g=e.i(152098);',
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:f,clipDialogProgress:h,withoutOpenIdentity:m=!1,withoutOpenThread:p=!1,className:v})=>{let y=new Date(e).getTime(),b=(0,a.useRef)(null),{channelId:x}=(0,d.useChatroomContext)(),w=(0,i.f)(e=>e.currentProgressInMs),C=(0,i.f)(e=>e.isSeekbarSliding),j=h??w',
