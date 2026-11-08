@@ -1,3 +1,10 @@
+# Verification — 1.1.4 (9 November 2026)
+
+- `npm test`: 28 passed, 0 failed. Validated dropped binding detection, contract invalidation on negative evidence, disabled hotkey pass-through, exponential backoff, and seek interval normalization.
+- `npm run lint`: 0 errors, 0 notices, 0 warnings.
+- `npm run build`: deterministic ZIP/XPI `kick-vod-chat-fix-1.1.4.xpi`.
+- `npm run pack-source`: generated review source archive `kick-vod-chat-fix-1.1.4-source.zip`.
+
 # Verification — 1.1.3 (28 October 2026)
 
 - `npm test`: 26 passed, 0 failed. Validated on October 28 Turbopack bundle fixtures (`october-28-module.js`, `october-28-query-contract.js`), out-of-order chunk arrival, contract wait timeout fallback, safe filter closure on navigation, and unmounted video pause evaluation.

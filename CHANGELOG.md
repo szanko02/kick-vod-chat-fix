@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-11-09
+
+### Fixed
+- Added dropped binding reference validation in `rewrite.js` to prevent runtime ReferenceErrors if Kick uses variables removed by adapter replacement.
+- Implemented query contract invalidation upon negative evidence (`getInfiniteHistoryByChannel` present with mismatched contract) and reduced contract wait timeout to 4000ms.
+- Fixed hotkeys intercepting ArrowLeft/ArrowRight when the extension is disabled in storage or when focus is on `<select>`, `role="slider"`, `role="textbox"`, or other interactive elements.
+- Added exponential backoff with jitter and 60-second cap on history query retries in `replay-template.js`.
+- Added fast `includes` prefilters and tokenization precomputation for bundle rewriting; added irrelevant chunk URL caching in `background.js`.
+- Throttled content script `METRICS` messages to at most once per second; cached badge status per tab with promise rejection handling.
+- Added stream write safety guard in `finishResponse` preventing double-write on stream write failures.
+- Unified seek interval normalization across all extension contexts in `seek-utils.js` and added auto-correction on input blur.
+
 ## [1.1.3] - 2026-10-28
 
 ### Fixed
@@ -16,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In `content.js`, corrected `isPaused` evaluation to `!video || Boolean(video.paused)` to prevent prematurely emitting `stale` status (`?`) when the video element is unmounted or loading.
 - Added adapter support and test fixtures for Kick's October 28 Turbopack bundle.
 - Added comprehensive test coverage for out-of-order chunk arrival, contract wait timeout fallback, session-wide contract verification across tabs, safe filter closure on navigation while awaiting contract, and null video element handling.
-- Hardened bundle rewriting: added dropped binding reference detection in component body, contract invalidation on negative evidence, fast prefiltering, and backoff with jitter on request retries.
 
 ## [1.1.2] - 2026-10-28
 
