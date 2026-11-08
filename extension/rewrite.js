@@ -6,6 +6,13 @@
     'getInfiniteHistoryByChannel:(e,n)=>(0,t.f)({queryKey:["WebChatHistory","getHistoryByChannel",e,n],queryFn:({signal:t,pageParam:n})=>o(t,e,n.start_time),initialPageParam:{start_time:n},' + queryContract + '})'
   ];
 
+  function buildReplacement(adapter, names) {
+    const v = name => names.get(name) || name;
+    const r = adapter.roles;
+    const hook = `(${root.KCFReplayTemplate.toString()})({React:${v(r.react)},useInfiniteQuery:KCF_options_v3=>(0,${v(r.query)}.${r.queryFn})(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v(r.history)}.${r.historyFn})({channelId:${v(r.channelId)},startTime:KCF_start_v3}),initialStart:${v(r.initialStart)},videoStartMs:${v(r.videoStartMs)},progress:${v(r.progress)},isSliding:${v(r.isSliding)},channelId:${v(r.channelId)}})`;
+    return `,[${v(r.isPaused)},${v(r.setIsPaused)}]=(0,${v(r.react)}.useState)(!1),KCF_replay_state_v3=${hook},${v(r.data)}=KCF_replay_state_v3.data,${v(r.fetchNextPage)}=KCF_replay_state_v3.fetchNextPage,${v(r.displayMs)}=KCF_replay_state_v3.displayMs;`;
+  }
+
   const adapters = [
     {
       id: 'october-28-2026',
@@ -13,11 +20,13 @@
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:f,clipDialogProgress:h,withoutOpenIdentity:m=!1,withoutOpenThread:p=!1,className:v})=>{let y=new Date(e).getTime(),b=(0,a.useRef)(null),{channelId:w}=(0,u.useChatroomContext)(),x=(0,l.f)(e=>e.currentProgressInMs),C=(0,l.f)(e=>e.isSeekbarSliding),S=h??x',
       before: ',j=(0,a.useRef)(0),k=(0,a.useRef)(-2500),[E,_]=(0,a.useState)(0),[B,P]=(0,a.useState)(e),[T,N]=(0,a.useState)(!1),{data:L,fetchNextPage:q}=(0,r.f)({...(0,i.I)({channelId:w,startTime:B}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!C)});(0,a.useEffect)(()=>{if(S-j.current>2e3||S<j.current){j.current=S,k.current=S-2500,_(S),P(new Date(y+S).toISOString());return}S>E+500&&_(S),j.current=S,S-k.current>=5e3&&(q(),k.current=S)},[E,q,S,y]);',
       filter: 'F.filter(e=>new Date(e.created_at).getTime()<=y+E)',
-      build(source, names) {
-        const v = name => names.get(name) || name;
-        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('a')},useInfiniteQuery:KCF_options_v3=>(0,${v('r')}.f)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('i')}.I)({channelId:${v('w')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('y')},progress:${v('S')},isSliding:${v('C')},channelId:${v('w')}})`;
-        return `,[${v('T')},${v('N')}]=(0,${v('a')}.useState)(!1),KCF_replay_state_v3=${hook},${v('L')}=KCF_replay_state_v3.data,${v('q')}=KCF_replay_state_v3.fetchNextPage,${v('E')}=KCF_replay_state_v3.displayMs;`;
-      }
+      roles: {
+        react: 'a', query: 'r', queryFn: 'f', history: 'i', historyFn: 'I',
+        channelId: 'w', initialStart: 'e', videoStartMs: 'y', progress: 'S', isSliding: 'C',
+        isPaused: 'T', setIsPaused: 'N', data: 'L', fetchNextPage: 'q', displayMs: 'E'
+      },
+      dropped: ['j', 'k', '_', 'B', 'P'],
+      build(source, names) { return buildReplacement(this, names); }
     },
     {
       id: 'october-19-2026',
@@ -25,11 +34,13 @@
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:f,clipDialogProgress:h,withoutOpenIdentity:m=!1,withoutOpenThread:p=!1,className:v})=>{let y=new Date(e).getTime(),b=(0,a.useRef)(null),{channelId:x}=(0,d.useChatroomContext)(),w=(0,i.f)(e=>e.currentProgressInMs),C=(0,i.f)(e=>e.isSeekbarSliding),j=h??w',
       before: ',k=(0,a.useRef)(0),S=(0,a.useRef)(-2500),[B,_]=(0,a.useState)(0),[E,P]=(0,a.useState)(e),[T,N]=(0,a.useState)(!1),{data:q,fetchNextPage:L}=(0,r.f)({...(0,n.I)({channelId:x,startTime:E}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!C)});(0,a.useEffect)(()=>{if(j-k.current>2e3||j<k.current){k.current=j,S.current=j-2500,_(j),P(new Date(y+j).toISOString());return}j>B+500&&_(j),k.current=j,j-S.current>=5e3&&(L(),S.current=j)},[B,L,j,y]);',
       filter: 'U.filter(e=>new Date(e.created_at).getTime()<=y+B)',
-      build(source, names) {
-        const v = name => names.get(name) || name;
-        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('a')},useInfiniteQuery:KCF_options_v3=>(0,${v('r')}.f)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('n')}.I)({channelId:${v('x')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('y')},progress:${v('j')},isSliding:${v('C')},channelId:${v('x')}})`;
-        return `,[${v('T')},${v('N')}]=(0,${v('a')}.useState)(!1),KCF_replay_state_v3=${hook},${v('q')}=KCF_replay_state_v3.data,${v('L')}=KCF_replay_state_v3.fetchNextPage,${v('B')}=KCF_replay_state_v3.displayMs;`;
-      }
+      roles: {
+        react: 'a', query: 'r', queryFn: 'f', history: 'n', historyFn: 'I',
+        channelId: 'x', initialStart: 'e', videoStartMs: 'y', progress: 'j', isSliding: 'C',
+        isPaused: 'T', setIsPaused: 'N', data: 'q', fetchNextPage: 'L', displayMs: 'B'
+      },
+      dropped: ['k', 'S', '_', 'E', 'P'],
+      build(source, names) { return buildReplacement(this, names); }
     },
     {
       id: 'legacy-v0.2',
@@ -37,11 +48,13 @@
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:p,clipDialogProgress:g,withoutOpenIdentity:y=!1,withoutOpenThread:v=!1,className:C})=>{let b=new Date(e).getTime(),E=(0,i.useFlag)(n.FlagKey.ViewChatThread),x=(0,a.useRef)(null),{channelId:A}=(0,h.useChatroomContext)(),S=(0,u.usePlayerStore)(e=>e.currentProgressInMs),w=(0,u.usePlayerStore)(e=>e.isSeekbarSliding),M=g??S',
       before: ',_=(0,a.useRef)(0),q=(0,a.useRef)(-2500),[B,Q]=(0,a.useState)(0),[O,k]=(0,a.useState)(e),[D,R]=(0,a.useState)(!1),{data:P,fetchNextPage:I}=(0,s.useInfiniteQuery)({...(0,o.useInfiniteChatHistoryByChannel)({channelId:A,startTime:O}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!w)});(0,a.useEffect)(()=>{if(M-_.current>2e3||M<_.current){_.current=M,q.current=M-2500,Q(M),k(new Date(b+M).toISOString());return}M>B+500&&Q(M),_.current=M,M-q.current>=5e3&&(I(),q.current=M)},[B,I,M,b]);',
       filter: 'T.filter(e=>new Date(e.created_at).getTime()<=b+B)',
-      build(source, names) {
-        const v = name => names.get(name) || name;
-        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('a')},useInfiniteQuery:KCF_options_v3=>(0,${v('s')}.useInfiniteQuery)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('o')}.useInfiniteChatHistoryByChannel)({channelId:${v('A')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('b')},progress:${v('M')},isSliding:${v('w')},channelId:${v('A')}})`;
-        return `,[${v('D')},${v('R')}]=(0,${v('a')}.useState)(!1),KCF_replay_state_v3=${hook},${v('P')}=KCF_replay_state_v3.data,${v('I')}=KCF_replay_state_v3.fetchNextPage,${v('B')}=KCF_replay_state_v3.displayMs;`;
-      }
+      roles: {
+        react: 'a', query: 's', queryFn: 'useInfiniteQuery', history: 'o', historyFn: 'useInfiniteChatHistoryByChannel',
+        channelId: 'A', initialStart: 'e', videoStartMs: 'b', progress: 'M', isSliding: 'w',
+        isPaused: 'D', setIsPaused: 'R', data: 'P', fetchNextPage: 'I', displayMs: 'B'
+      },
+      dropped: ['_', 'q', 'Q', 'O', 'k'],
+      build(source, names) { return buildReplacement(this, names); }
     },
     {
       id: 'october-2026',
@@ -49,11 +62,13 @@
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:m,clipDialogProgress:g,withoutOpenIdentity:_=!1,withoutOpenThread:v=!1,className:x})=>{let w=new Date(e).getTime(),y=(0,n.useFlag)(i.FlagKey.ViewChatThread),b=(0,r.useRef)(null),{channelId:C}=(0,u.useChatroomContext)(),E=(0,l.usePlayerStore)(e=>e.currentProgressInMs),A=(0,l.usePlayerStore)(e=>e.isSeekbarSliding),S=g??E',
       before: ',R=(0,r.useRef)(0),N=(0,r.useRef)(-2500),[I,T]=(0,r.useState)(0),[j,L]=(0,r.useState)(e),[O,k]=(0,r.useState)(!1),{data:D,fetchNextPage:B}=(0,a.useInfiniteQuery)({...(0,o.useInfiniteChatHistoryByChannel)({channelId:C,startTime:j}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!A)});(0,r.useEffect)(()=>{if(S-R.current>2e3||S<R.current){R.current=S,N.current=S-2500,T(S),L(new Date(w+S).toISOString());return}S>I+500&&T(S),R.current=S,S-N.current>=5e3&&(B(),N.current=S)},[I,B,S,w]);',
       filter: 'M.filter(e=>new Date(e.created_at).getTime()<=w+I)',
-      build(source, names) {
-        const v = name => names.get(name) || name;
-        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('r')},useInfiniteQuery:KCF_options_v3=>(0,${v('a')}.useInfiniteQuery)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('o')}.useInfiniteChatHistoryByChannel)({channelId:${v('C')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('w')},progress:${v('S')},isSliding:${v('A')},channelId:${v('C')}})`;
-        return `,[${v('O')},${v('k')}]=(0,${v('r')}.useState)(!1),KCF_replay_state_v3=${hook},${v('D')}=KCF_replay_state_v3.data,${v('B')}=KCF_replay_state_v3.fetchNextPage,${v('I')}=KCF_replay_state_v3.displayMs;`;
-      }
+      roles: {
+        react: 'r', query: 'a', queryFn: 'useInfiniteQuery', history: 'o', historyFn: 'useInfiniteChatHistoryByChannel',
+        channelId: 'C', initialStart: 'e', videoStartMs: 'w', progress: 'S', isSliding: 'A',
+        isPaused: 'O', setIsPaused: 'k', data: 'D', fetchNextPage: 'B', displayMs: 'I'
+      },
+      dropped: ['R', 'N', 'T', 'j', 'L'],
+      build(source, names) { return buildReplacement(this, names); }
     },
     {
       id: 'october-14-2026',
@@ -61,11 +76,13 @@
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:m,clipDialogProgress:g,withoutOpenIdentity:p=!1,withoutOpenThread:f=!1,className:y})=>{let v=new Date(e).getTime(),C=(0,a.useRef)(null),{channelId:b}=(0,u.useChatroomContext)(),x=(0,n.usePlayerStore)(e=>e.currentProgressInMs),w=(0,n.usePlayerStore)(e=>e.isSeekbarSliding),S=g??x',
       before: ',E=(0,a.useRef)(0),B=(0,a.useRef)(-2500),[k,_]=(0,a.useState)(0),[q,j]=(0,a.useState)(e),[P,F]=(0,a.useState)(!1),{data:I,fetchNextPage:T}=(0,r.useInfiniteQuery)({...(0,i.useInfiniteChatHistoryByChannel)({channelId:b,startTime:q}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!w)});(0,a.useEffect)(()=>{if(S-E.current>2e3||S<E.current){E.current=S,B.current=S-2500,_(S),j(new Date(v+S).toISOString());return}S>k+500&&_(S),E.current=S,S-B.current>=5e3&&(T(),B.current=S)},[k,T,S,v]);',
       filter: 'N.filter(e=>new Date(e.created_at).getTime()<=v+k)',
-      build(source, names) {
-        const v = name => names.get(name) || name;
-        const hook = `(${root.KCFReplayTemplate.toString()})({React:${v('a')},useInfiniteQuery:KCF_options_v3=>(0,${v('r')}.useInfiniteQuery)(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v('i')}.useInfiniteChatHistoryByChannel)({channelId:${v('b')},startTime:KCF_start_v3}),initialStart:${v('e')},videoStartMs:${v('v')},progress:${v('S')},isSliding:${v('w')},channelId:${v('b')}})`;
-        return `,[${v('P')},${v('F')}]=(0,${v('a')}.useState)(!1),KCF_replay_state_v3=${hook},${v('I')}=KCF_replay_state_v3.data,${v('T')}=KCF_replay_state_v3.fetchNextPage,${v('k')}=KCF_replay_state_v3.displayMs;`;
-      }
+      roles: {
+        react: 'a', query: 'r', queryFn: 'useInfiniteQuery', history: 'i', historyFn: 'useInfiniteChatHistoryByChannel',
+        channelId: 'b', initialStart: 'e', videoStartMs: 'v', progress: 'S', isSliding: 'w',
+        isPaused: 'P', setIsPaused: 'F', data: 'I', fetchNextPage: 'T', displayMs: 'k'
+      },
+      dropped: ['E', 'B', '_', 'q', 'j'],
+      build(source, names) { return buildReplacement(this, names); }
     }
   ];
 
@@ -276,7 +293,7 @@
     let at = 1;
     while (at < tokens.length) {
       const alias = tokens[at++];
-      if (alias?.type !== 'identifier' || tokens[at++]?.value !== '=' ) return null;
+      if (alias?.type !== 'identifier' || tokens[at++]?.value !== '=') return null;
       const currentCallback = tokens[at++];
       if (currentCallback?.type !== 'identifier' || tokens[at++]?.value !== '.' || tokens[at++]?.value !== 'i' || tokens[at++]?.value !== '(') return null;
       const id = tokens[at++];
@@ -329,14 +346,26 @@
     return expectedToCandidate;
   }
 
-  function matchCanonicalFragment(expectedSource, prefixSource, source, start) {
-    const expectedTokens = tokenize(expectedSource);
-    const prefixCount = tokenize(prefixSource)?.length;
+  // Precompute tokenization and imports for all adapters
+  for (const adapter of adapters) {
+    const prefixSource = adapter.imports + adapter.componentPrefix;
+    const expectedSource = prefixSource + adapter.before;
+    adapter.prefixTokens = tokenize(prefixSource);
+    adapter.expectedTokens = tokenize(expectedSource);
+    adapter.prefixCount = adapter.prefixTokens ? adapter.prefixTokens.length : 0;
+    adapter.expectedImports = adapter.expectedTokens ? parseImports(adapter.expectedTokens) : null;
+  }
+
+  // Precompute tokenized query methods
+  const tokenizedQueryMethods = queryMethods.map(m => tokenize(m)).filter(Boolean);
+
+  function matchCanonicalFragment(adapter, source, start) {
+    const { expectedTokens, prefixCount, expectedImports } = adapter;
+    if (!expectedTokens || !prefixCount || !expectedImports) return null;
     const candidateTokens = tokenize(source.slice(start, start + 8192), expectedTokens.length);
-    if (!expectedTokens || !prefixCount || !candidateTokens || candidateTokens.length < expectedTokens.length) return null;
-    const expectedImports = parseImports(expectedTokens);
+    if (!candidateTokens || candidateTokens.length < expectedTokens.length) return null;
     const candidateImports = parseImports(candidateTokens);
-    if (!expectedImports || !candidateImports || expectedImports.aliases.length !== candidateImports.aliases.length) return null;
+    if (!candidateImports || expectedImports.aliases.length !== candidateImports.aliases.length) return null;
     const mapping = compareTokens(expectedTokens, candidateTokens.slice(0, expectedTokens.length),
       expectedImports.idIndexes, candidateImports.idIndexes);
     if (!mapping) return null;
@@ -349,7 +378,7 @@
   }
 
   function detectQueryContract(source) {
-    if (typeof source !== 'string') return null;
+    if (typeof source !== 'string' || !source.includes('getInfiniteHistoryByChannel')) return null;
     const scan = scanJavaScript(source);
     if (!scan.valid) return null;
     const declarations = scan.queryDeclarations.filter(offset => {
@@ -359,9 +388,7 @@
     });
     if (declarations.length !== 1) return null;
     const offset = declarations[0];
-    for (const method of queryMethods) {
-      const expected = tokenize(method);
-      if (!expected) continue;
+    for (const expected of tokenizedQueryMethods) {
       const candidate = tokenize(source.slice(offset, offset + 8192), expected.length + 1);
       if (candidate && candidate.length === expected.length + 1 &&
           compareTokens(expected, candidate.slice(0, expected.length)) &&
@@ -392,8 +419,32 @@
     return occurrences.length === 1 && occurrences[0].index >= segmentEnd;
   }
 
+  function hasDroppedBindingReferences(source, segmentEnd, droppedNames, mapping) {
+    if (!droppedNames || droppedNames.length === 0) return false;
+    const droppedActual = new Set(droppedNames.map(name => mapping?.get(name) || name));
+    let depth = 0;
+    const tokens = tokenize(source.slice(segmentEnd, segmentEnd + 32768));
+    if (!tokens) return true;
+    for (let index = 0; index < tokens.length; index++) {
+      const token = tokens[index];
+      if (token.value === '{') {
+        depth++;
+      } else if (token.value === '}') {
+        if (depth === 0) {
+          break;
+        }
+        depth--;
+      } else if (token.type === 'identifier' && droppedActual.has(token.value)) {
+        if (!isStaticIdentifier(tokens, index)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   function adaptBundleSource(source, options = {}) {
-    if (typeof source !== 'string') return { source, status: 'unchanged', reason: 'invalid-source' };
+    if (typeof source !== 'string' || !source.includes(marker)) return { source, status: 'unchanged', reason: 'no-target' };
     const scan = scanJavaScript(source);
     if (!scan.valid) return { source, status: 'unchanged', reason: 'invalid-source' };
     if (scan.markers.length === 0) return { source, status: 'unchanged', reason: 'no-target' };
@@ -403,16 +454,15 @@
     if (!root.KCFReplayTemplate) return { source, status: 'unchanged', reason: 'template-missing' };
 
     const markerAt = scan.markers[0];
+    const candidates = scan.vars.filter(offset => offset < markerAt);
     for (const adapter of adapters) {
-      const prefixSource = adapter.imports + adapter.componentPrefix;
-      const expectedSource = prefixSource + adapter.before;
-      const candidates = scan.vars.filter(offset => offset < markerAt);
       let match = null;
       for (let index = candidates.length - 1; index >= 0 && !match; index--)
-        match = matchCanonicalFragment(expectedSource, prefixSource, source, candidates[index]);
+        match = matchCanonicalFragment(adapter, source, candidates[index]);
       if (!match || markerAt >= match.segmentStart ||
           match.segmentEnd < markerAt ||
-          !matchFilter(source, adapter, match.mapping, match.segmentEnd)) continue;
+          !matchFilter(source, adapter, match.mapping, match.segmentEnd) ||
+          hasDroppedBindingReferences(source, match.segmentEnd, adapter.dropped, match.mapping)) continue;
       if (!options.contractVerified)
         return { source, status: 'unchanged', reason: 'contract-unverified', adapter: adapter.id };
       const replacement = adapter.build(source, match.mapping);

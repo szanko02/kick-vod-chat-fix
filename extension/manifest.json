@@ -13,7 +13,7 @@
     "https://assets.kick.com/*"
   ],
   "background": {
-    "scripts": ["replay-template.js", "rewrite.js", "background.js"],
+    "scripts": ["seek-utils.js", "replay-template.js", "rewrite.js", "background.js"],
     "persistent": true
   },
   "browser_action": {
@@ -24,7 +24,7 @@
   "content_scripts": [
     {
       "matches": ["https://kick.com/*", "https://www.kick.com/*"],
-      "js": ["content.js"],
+      "js": ["seek-utils.js", "content.js"],
       "run_at": "document_start",
       "all_frames": false
     }

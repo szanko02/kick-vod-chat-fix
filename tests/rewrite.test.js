@@ -100,6 +100,26 @@ test('accepts only bijective alpha-renames and changed numeric module ids', asyn
   }
 });
 
+test('rejects modules referencing dropped bindings in the remaining component body', async () => {
+  const october28 = await fixture('october-28-module.js');
+  const validResult = globalThis.KCFSourceRewrite.adaptBundleSource(october28, { contractVerified: true });
+  assert.equal(validResult.status, 'applied');
+
+  const mutated = october28.replace('},[E,q,S,y]);', '},[E,q,S,y]);console.log(B,P);');
+  const rejectedResult = globalThis.KCFSourceRewrite.adaptBundleSource(mutated, { contractVerified: true });
+  assert.equal(rejectedResult.status, 'unsupported');
+  assert.equal(rejectedResult.reason, 'unknown-segment');
+  assert.equal(rejectedResult.source, mutated);
+
+  const propAccess = october28.replace('},[E,q,S,y]);', '},[E,q,S,y]);const prop=foo.B+bar?.P;');
+  const propResult = globalThis.KCFSourceRewrite.adaptBundleSource(propAccess, { contractVerified: true });
+  assert.equal(propResult.status, 'applied');
+
+  const objKey = october28.replace('},[E,q,S,y]);', '},[E,q,S,y]);const obj={B:1,P:2};');
+  const objResult = globalThis.KCFSourceRewrite.adaptBundleSource(objKey, { contractVerified: true });
+  assert.equal(objResult.status, 'applied');
+});
+
 test('contains no downloaded-code execution mechanism', async () => {
   for (const path of ['../extension/background.js', '../extension/rewrite.js', '../extension/replay-template.js']) {
     const source = await readFile(new URL(path, import.meta.url), 'utf8');

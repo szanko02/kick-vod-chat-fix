@@ -14,7 +14,7 @@ const files = [];
 async function walk(directory) {
   const items = await readdir(directory, { withFileTypes: true });
   for (const item of items.sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
-    if (item.name === '__pycache__' || item.name === 'node_modules' || item.name === '.git') continue;
+    if (item.name === '.DS_Store' || item.name === 'Thumbs.db' || item.name === '__pycache__' || item.name === 'node_modules' || item.name === '.git') continue;
     const absolute = join(directory, item.name);
     if (item.isDirectory()) await walk(absolute);
     else if (item.isFile()) files.push(absolute);
@@ -36,9 +36,11 @@ const individualFiles = [
 for (const name of individualFiles) {
   const p = join(root, ...name.split('/'));
   try {
-    const stat = await readFile(p);
+    await readFile(p);
     files.push(p);
-  } catch {}
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
 }
 
 function crc32(bytes) {

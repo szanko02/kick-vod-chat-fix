@@ -3,12 +3,13 @@
   const MAX_RESPONSE = 2 * 1024 * 1024;
   const MAX_BUFFERED = 16 * 1024 * 1024;
   const RESPONSE_TIMEOUT_MS = 25000;
-  const CONTRACT_WAIT_MS = 20000;
+  const CONTRACT_WAIT_MS = 4000;
   const enabledState = { ready: false, enabled: false };
   const bufferedRequests = new Map();
   const pageStates = new Map();
   const verifiedContracts = new Set();
   const contractWaiters = new Map();
+  const irrelevantChunkUrls = new Set();
   let globalContractVerified = false;
   let bufferedTotal = 0;
   let persistedEnabled = true;
@@ -19,12 +20,19 @@
   let storageReadyPromise = Promise.resolve();
 
   function parseSeekSeconds(value, fallback) {
+    if (globalThis.KCFSeekUtils?.normalizeSeekSeconds) {
+      return globalThis.KCFSeekUtils.normalizeSeekSeconds(value, fallback);
+    }
     const num = Number(value);
     if (!Number.isFinite(num)) return fallback;
     return Math.max(1, Math.min(300, Math.round(num)));
   }
 
   function badge(tabId, status) {
+    if (!Number.isInteger(tabId) || tabId < 0) return;
+    const page = pageStates.get(tabId);
+    if (page && page.badgeStatus === status) return;
+    if (page) page.badgeStatus = status;
     const badgeData = {
       inactive: ['', '#777777'],
       applied: ['…', '#b7791f'],
@@ -34,8 +42,14 @@
       disabled: ['', '#777777'],
       checking: ['', '#777777']
     }[status] || ['', '#777777'];
-    browser.browserAction.setBadgeText({ tabId, text: badgeData[0] });
-    browser.browserAction.setBadgeBackgroundColor({ tabId, color: badgeData[1] });
+    try {
+      const textPromise = browser.browserAction.setBadgeText({ tabId, text: badgeData[0] });
+      if (textPromise?.catch) textPromise.catch(() => {});
+    } catch { /* tab closed */ }
+    try {
+      const colorPromise = browser.browserAction.setBadgeBackgroundColor({ tabId, color: badgeData[1] });
+      if (colorPromise?.catch) colorPromise.catch(() => {});
+    } catch { /* tab closed */ }
   }
 
   function notifyPatchStatus(tabId, status) {
@@ -129,8 +143,19 @@
     }
   }
 
+  function invalidateContract() {
+    globalContractVerified = false;
+    verifiedContracts.clear();
+    const allWaiters = Array.from(contractWaiters.values()).flat();
+    contractWaiters.clear();
+    for (const waiter of allWaiters) {
+      waiter.finish(false);
+    }
+  }
+
   async function finishResponse(state) {
     if (state.released) return;
+    let written = false;
     try {
       const bytes = new Uint8Array(state.bytes);
       let offset = 0;
@@ -140,12 +165,16 @@
       }
       const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 
-      if (browser.runtime.getManifest && rootContract(text)) markContract(state.tabId);
+      if (browser.runtime.getManifest) {
+        if (rootContract(text)) markContract(state.tabId);
+        else if (text.includes('getInfiniteHistoryByChannel')) invalidateContract();
+      }
       let contractVerified = globalContractVerified || verifiedContracts.has(state.tabId);
       if (!contractVerified && text.includes('"ChatroomReplayEntries"'))
         contractVerified = await waitForContract(state.tabId);
       if (state.released) return;
       if (!enabledState.enabled) {
+        written = true;
         state.filter.write(toArrayBuffer(bytes));
         state.filter.close();
         return;
@@ -154,19 +183,26 @@
       const result = rootRewrite(text, contractVerified);
       if (result.status === 'applied') {
         const encoded = new TextEncoder().encode(result.source);
+        written = true;
         state.filter.write(toArrayBuffer(encoded));
         sendStatus(state.tabId, 'applied');
       } else {
+        written = true;
         state.filter.write(toArrayBuffer(bytes));
         if (result.status === 'unsupported' || result.reason === 'contract-unverified') {
           sendStatus(state.tabId, 'unsupported');
         }
       }
       state.filter.close();
+      if (!text.includes('getInfiniteHistoryByChannel') && !text.includes('"ChatroomReplayEntries"')) {
+        if (irrelevantChunkUrls.size < 2000 && state.url) irrelevantChunkUrls.add(state.url);
+      }
     } catch {
-      try {
-        for (const chunk of state.chunks) state.filter.write(toArrayBuffer(chunk));
-      } catch { /* stream write failed */ }
+      if (!written) {
+        try {
+          for (const chunk of state.chunks) state.filter.write(toArrayBuffer(chunk));
+        } catch { /* stream write failed */ }
+      }
       safeClose(state, false);
     } finally {
       release(state.requestId, state);
@@ -192,6 +228,7 @@
   function intercept(details) {
     if (!enabledState.ready || !enabledState.enabled || details.tabId < 0 || details.frameId !== 0 ||
         !isKickDocument(details.documentUrl) ||
+        irrelevantChunkUrls.has(details.url) ||
         !/^https:\/\/assets\.kick\.com\/main\/_next\/static\/chunks\/[^/?#]+\.js(?:[?#]|$)/.test(details.url))
       return;
 
@@ -201,6 +238,7 @@
     const state = {
       requestId: details.requestId,
       tabId: details.tabId,
+      url: details.url,
       filter,
       chunks: [],
       bytes: 0,
@@ -372,8 +410,8 @@
       return Promise.resolve({ ok: true });
     }
     if (message?.type === 'STATUS' && Number.isInteger(tabId) && isKickTopFrame(sender) &&
-        ['stale', 'applied', 'unsupported', 'inactive'].includes(message.status)) {
-      sendStatus(tabId, message.status);
+        message.status === 'stale') {
+      sendStatus(tabId, 'stale');
       return Promise.resolve({ ok: true });
     }
 

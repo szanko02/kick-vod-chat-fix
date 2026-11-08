@@ -456,8 +456,8 @@ test('replay component without query contract times out after CONTRACT_WAIT_MS a
 
   assert.equal(componentFilter.closed, false, 'stream is paused awaiting contract');
 
-  // CONTRACT_WAIT_MS is 20000ms
-  app.fireTimersThrough(20000);
+  // CONTRACT_WAIT_MS is 4000ms
+  app.fireTimersThrough(4000);
   await flush();
 
   assert.equal(componentFilter.closed, true, 'component filter closed safely after contract wait timeout');
@@ -486,5 +486,40 @@ test('session-wide contract verification allows immediate rewrite on new tabs wi
   assert.equal(componentFilter.closed, true, 'component filter closed immediately on new tab');
   const rewritten = decoder.decode(app.joined(componentFilter));
   assert.match(rewritten, /KCF_replay_state_v3/, 'component was immediately rewritten');
+});
+
+test('negative contract evidence invalidates session-wide contract and prevents rewriting', async () => {
+  const app = await makeBackground();
+  app.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const validQuery = await readFile(new URL('./fixtures/latest-query-contract.js', import.meta.url), 'utf8');
+  const validFilter = app.request('valid-query-tab7', { tabId: 7 });
+  app.emit(validFilter, encoder.encode(validQuery));
+  validFilter.onstop();
+  await flush();
+
+  // Negative contract arrives (getInfiniteHistoryByChannel present, but contract mismatch)
+  const invalidQuery = validQuery.replace('+5e3', '+10e3');
+  const invalidFilter = app.request('invalid-query-tab7', { tabId: 7 });
+  app.emit(invalidFilter, encoder.encode(invalidQuery));
+  invalidFilter.onstop();
+  await flush();
+
+  // Subsequent replay component chunk on tab 8 should NOT rewrite immediately
+  const current = await readFile(new URL('./fixtures/latest-module.js', import.meta.url), 'utf8');
+  const componentFilter = app.request('component-tab8', { tabId: 8 });
+  app.emit(componentFilter, encoder.encode(current));
+  componentFilter.onstop();
+  await flush();
+
+  // Contract was invalidated, so component waits for contract instead of immediately rewriting
+  assert.equal(componentFilter.closed, false, 'component filter does not rewrite when contract was invalidated');
+
+  // After timeout, component closes with unsupported status
+  app.fireTimersThrough(4000);
+  await flush();
+
+  assert.equal(componentFilter.closed, true);
+  assert.equal(decoder.decode(app.joined(componentFilter)), current, 'original unpatched code served');
 });
 

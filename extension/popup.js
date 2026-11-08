@@ -53,15 +53,28 @@ async function refresh() {
   }
 }
 
+function parseSeek(value, fallback) {
+  if (globalThis.KCFSeekUtils?.normalizeSeekSeconds) {
+    return globalThis.KCFSeekUtils.normalizeSeekSeconds(value, fallback);
+  }
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(1, Math.min(300, Math.round(num)));
+}
+
 function saveSeek() {
   if (!seekBackwardInput || !seekForwardInput) return;
-  const backward = Math.max(1, Math.min(300, parseInt(seekBackwardInput.value, 10) || 10));
-  const forward = Math.max(1, Math.min(300, parseInt(seekForwardInput.value, 10) || 30));
+  const backward = parseSeek(seekBackwardInput.value, 10);
+  const forward = parseSeek(seekForwardInput.value, 30);
+  seekBackwardInput.value = backward;
+  seekForwardInput.value = forward;
   browser.runtime.sendMessage({ type: 'SET_SEEK', seekBackward: backward, seekForward: forward }).catch(() => {});
 }
 
 seekBackwardInput?.addEventListener('change', saveSeek);
 seekForwardInput?.addEventListener('change', saveSeek);
+seekBackwardInput?.addEventListener('blur', saveSeek);
+seekForwardInput?.addEventListener('blur', saveSeek);
 
 enabledInput.addEventListener('change', () => {
   browser.runtime.sendMessage({ type: 'SET_ENABLED', enabled: enabledInput.checked })

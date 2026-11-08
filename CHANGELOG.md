@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In `content.js`, corrected `isPaused` evaluation to `!video || Boolean(video.paused)` to prevent prematurely emitting `stale` status (`?`) when the video element is unmounted or loading.
 - Added adapter support and test fixtures for Kick's October 28 Turbopack bundle.
 - Added comprehensive test coverage for out-of-order chunk arrival, contract wait timeout fallback, session-wide contract verification across tabs, safe filter closure on navigation while awaiting contract, and null video element handling.
+- Hardened bundle rewriting: added dropped binding reference detection in component body, contract invalidation on negative evidence, fast prefiltering, and backoff with jitter on request retries.
+
+## [1.1.2] - 2026-10-28
+
+### Fixed
+- Prepared support for Turbopack chunk structures and refined contract timeouts.
 
 ## [1.1.1] - 2026-10-21
 

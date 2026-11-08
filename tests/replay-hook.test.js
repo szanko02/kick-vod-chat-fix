@@ -82,7 +82,8 @@ function createHarness({ client, clock, transport, initialData = true }) {
       channelId: props.channelId,
       now: clock.now,
       scheduleTimeout: clock.schedule,
-      clearTimeout: clock.clear
+      clearTimeout: clock.clear,
+      random: () => 0
     });
     const messages = state.data?.pages.flatMap(page => page?.data?.messages || []) || [];
     const shown = messages.filter(message => Date.parse(message.created_at) <= props.videoStartMs + state.displayMs);
@@ -253,7 +254,8 @@ test('two transient page errors recover after cooldown and exhausted pages stop 
   await flushReactTurn();
   assert.equal(calls, 4, 'first transient failure starts once playback consumes buffer');
   for (let failure = 0; failure < 2; failure++) {
-    await act(async () => { clock.advance(2999); clock.runDue(); await flush(); });
+    const cooldown = failure === 0 ? 3000 : 6000;
+    await act(async () => { clock.advance(cooldown - 1); clock.runDue(); await flush(); });
     assert.equal(calls, 4 + failure, 'cooldown prevents an early retry');
     await act(async () => { clock.advance(1); clock.runDue(); await flush(); });
     await flushReactTurn();

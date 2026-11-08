@@ -1,11 +1,15 @@
 /* global browser */
 (function () {
   const routePattern = /^\/[^/?#]+\/videos\/[^/?#]+(?:\/|$)/;
+  const nonSeekableRoles = new Set(['slider', 'textbox', 'combobox', 'listbox', 'menu', 'tab']);
   let routeKey = '';
   let routeSequence = 0;
   let isVod = false;
+  let enabled = true;
   let patchStatus = 'checking';
   let lastMetricsAt = 0;
+  let lastMetricsSentAt = 0;
+  let metricsThrottleTimer = null;
   let observer = null;
   let rootObserver = null;
   let timer = null;
@@ -15,12 +19,29 @@
     browser.runtime.sendMessage(message).catch(() => {});
   }
 
-  function readMetrics() {
+  function readMetrics(force = false) {
     const raw = document.documentElement?.getAttribute('data-kcf-buffer-v2');
     if (!raw) return;
     try {
       const value = JSON.parse(raw);
       if (value?.version !== 3 || !Number.isFinite(value.updatedAt)) return;
+      const now = Date.now();
+      const elapsed = now - lastMetricsSentAt;
+      if (!force && elapsed < 1000) {
+        if (!metricsThrottleTimer && typeof setTimeout === 'function') {
+          metricsThrottleTimer = setTimeout(() => {
+            metricsThrottleTimer = null;
+            readMetrics(true);
+          }, 1000 - elapsed);
+        }
+        return;
+      }
+      if (metricsThrottleTimer && typeof clearTimeout === 'function') {
+        clearTimeout(metricsThrottleTimer);
+        metricsThrottleTimer = null;
+      }
+      lastMetricsSentAt = now;
+      lastMetricsAt = now;
       const metrics = {
         version: 3,
         videoMs: Number.isFinite(value.videoMs) ? value.videoMs : null,
@@ -31,7 +52,6 @@
         error: Boolean(value.error),
         updatedAt: value.updatedAt
       };
-      lastMetricsAt = Date.now();
       patchStatus = metrics.bufferMs !== null && metrics.bufferMs >= 10000 ? 'healthy' : 'applied';
       send({ type: 'METRICS', metrics });
     } catch { /* malformed page attributes are ignored */ }
@@ -49,12 +69,26 @@
       lastMetricsAt = 0;
     }
     send({ type: 'ROUTE', isVod, routeSequence });
-    if (isVod) readMetrics();
+    if (isVod) readMetrics(true);
+  }
+
+  function findVideo() {
+    const list = typeof document.querySelectorAll === 'function' ? [...document.querySelectorAll('video')] : null;
+    const fallback = document.querySelector?.('video');
+    const videos = list || (fallback ? [fallback] : []);
+    if (videos.length === 0) return null;
+    for (const v of videos) {
+      if (Number.isFinite(v?.duration) && v.duration > 0 && !v.paused) return v;
+    }
+    for (const v of videos) {
+      if (Number.isFinite(v?.duration) && v.duration > 0) return v;
+    }
+    return videos[0];
   }
 
   function checkFreshness() {
     checkRoute();
-    const video = document.querySelector?.('video');
+    const video = findVideo();
     const isPaused = !video || Boolean(video.paused);
     if (isVod && !isPaused && lastMetricsAt && Date.now() - lastMetricsAt > 5000 && patchStatus !== 'unsupported') {
       patchStatus = 'stale';
@@ -80,9 +114,9 @@
       rootObserver.observe(document, { childList: true, subtree: true });
       return;
     }
-    observer = new MutationObserver(readMetrics);
+    observer = new MutationObserver(() => readMetrics(false));
     observer.observe(root, { attributes: true, attributeFilter: ['data-kcf-buffer-v2'] });
-    readMetrics();
+    readMetrics(true);
   }
 
   let seekBackward = 10;
@@ -91,30 +125,41 @@
   let osdTimer = null;
   let osdAccumulated = 0;
 
-  function loadSeekSettings() {
-    browser.storage?.local?.get?.(['seekBackward', 'seekForward']).then(stored => {
-      if (Number.isInteger(stored?.seekBackward) && stored.seekBackward >= 1 && stored.seekBackward <= 300) {
-        seekBackward = stored.seekBackward;
+  function parseSeek(value, fallback) {
+    if (globalThis.KCFSeekUtils?.normalizeSeekSeconds) {
+      return globalThis.KCFSeekUtils.normalizeSeekSeconds(value, fallback);
+    }
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.max(1, Math.min(300, Math.round(num)));
+  }
+
+  function loadSettings() {
+    browser.storage?.local?.get?.(['enabled', 'seekBackward', 'seekForward']).then(stored => {
+      if (typeof stored?.enabled === 'boolean') {
+        enabled = stored.enabled;
       }
-      if (Number.isInteger(stored?.seekForward) && stored.seekForward >= 1 && stored.seekForward <= 300) {
-        seekForward = stored.seekForward;
-      }
+      seekBackward = parseSeek(stored?.seekBackward, 10);
+      seekForward = parseSeek(stored?.seekForward, 30);
     }).catch(() => {});
   }
 
   browser.storage?.onChanged?.addListener?.((changes, area) => {
     if (area === 'local') {
-      if (changes.seekBackward && Number.isInteger(changes.seekBackward.newValue)) {
-        seekBackward = Math.max(1, Math.min(300, changes.seekBackward.newValue));
+      if (changes.enabled && typeof changes.enabled.newValue === 'boolean') {
+        enabled = changes.enabled.newValue;
       }
-      if (changes.seekForward && Number.isInteger(changes.seekForward.newValue)) {
-        seekForward = Math.max(1, Math.min(300, changes.seekForward.newValue));
+      if (changes.seekBackward) {
+        seekBackward = parseSeek(changes.seekBackward.newValue, seekBackward);
+      }
+      if (changes.seekForward) {
+        seekForward = parseSeek(changes.seekForward.newValue, seekForward);
       }
     }
   });
 
-  function showSeekOsd(seconds) {
-    const video = document.querySelector?.('video');
+  function showSeekOsd(seconds, video) {
+    video = video || findVideo();
     if (!video || typeof document.createElement !== 'function') return;
 
     if (osdEl && osdEl.style?.opacity !== '0' && ((osdAccumulated > 0 && seconds > 0) || (osdAccumulated < 0 && seconds < 0))) {
@@ -145,8 +190,8 @@
       });
     }
 
-    const isRu = (document.documentElement?.lang || navigator?.language || '').startsWith('ru');
-    const unit = isRu ? 'сек' : 's';
+    const unit = (typeof browser !== 'undefined' && browser.i18n?.getMessage?.('secondsUnit'))
+      || ((document.documentElement?.lang || navigator?.language || '').startsWith('ru') ? 'сек' : 's');
     const text = osdAccumulated < 0 ? `⟲ ${Math.abs(osdAccumulated)} ${unit}` : `⟳ ${osdAccumulated} ${unit}`;
     osdEl.textContent = text;
     osdEl.style.opacity = '1';
@@ -183,18 +228,23 @@
   function isEditableTarget(target) {
     if (!target) return false;
     const tag = (target.tagName ? target.tagName : '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea' || target.isContentEditable || target.dataset?.input) return true;
-    if (typeof target.closest === 'function' && target.closest('[role="dialog"], [role="alertdialog"], [data-state="open"][role="dialog"]')) return true;
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable || target.dataset?.input) return true;
+    const role = (typeof target.getAttribute === 'function' ? target.getAttribute('role') : target.role) || '';
+    if (role && nonSeekableRoles.has(role.toLowerCase())) return true;
+    if (typeof target.closest === 'function') {
+      if (target.closest('[role="dialog"], [role="alertdialog"], [data-state="open"][role="dialog"], [role="slider"], [role="textbox"], [role="combobox"], [role="listbox"], [role="menu"], [role="tab"]')) return true;
+    }
     return false;
   }
 
   function onKeyDown(event) {
-    if (!isVod || patchStatus === 'disabled') return;
+    if (!isVod || !enabled) return;
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    if (isEditableTarget(event.target)) return;
+    const target = (typeof event.composedPath === 'function' && event.composedPath()[0]) || event.target;
+    if (isEditableTarget(target)) return;
 
-    const video = document.querySelector?.('video');
+    const video = findVideo();
     if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
 
     event.preventDefault();
@@ -203,7 +253,7 @@
     const isBackward = event.key === 'ArrowLeft';
     const delta = isBackward ? -seekBackward : seekForward;
     video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta));
-    showSeekOsd(delta);
+    showSeekOsd(delta, video);
   }
 
   function onPopState() {
@@ -213,7 +263,7 @@
   function start() {
     if (running) return;
     running = true;
-    loadSeekSettings();
+    loadSettings();
     checkRoute(true);
     observeMetrics();
     timer = setInterval(checkFreshness, 1000);
@@ -226,6 +276,10 @@
     running = false;
     clearInterval(timer);
     timer = null;
+    if (metricsThrottleTimer && typeof clearTimeout === 'function') {
+      clearTimeout(metricsThrottleTimer);
+      metricsThrottleTimer = null;
+    }
     if (typeof clearTimeout === 'function') clearTimeout(osdTimer);
     osdEl?.remove();
     osdEl = null;

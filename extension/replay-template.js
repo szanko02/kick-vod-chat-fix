@@ -3,7 +3,8 @@
     const {
       React, useInfiniteQuery, createOptions, initialStart, videoStartMs,
       progress, isSliding, channelId,
-      now = Date.now, scheduleTimeout = setTimeout, clearScheduledTimeout = clearTimeout
+      now = Date.now, scheduleTimeout = setTimeout, clearScheduledTimeout = clearTimeout,
+      random = Math.random
     } = context;
     const contextKey = JSON.stringify([initialStart, videoStartMs, channelId]);
     const [displayMs, setDisplayMs] = React.useState(Number.isFinite(progress) ? progress : 0);
@@ -12,7 +13,7 @@
     const control = React.useRef({
       contextKey,
       lastProgress: null, wasSliding: false, flight: null,
-      retryAfter: 0, retryTimer: null
+      retryAfter: 0, retryTimer: null, retryCount: 0
     });
     const contextChanged = control.current.contextKey !== contextKey;
     const effectiveStartAt = contextChanged ? initialStart : startAt;
@@ -42,6 +43,12 @@
       ? Date.parse(lastParam.start_time) - videoStartMs - progress
       : null;
 
+    function getBackoffDelay(count) {
+      const base = Math.min(60000, 3000 * Math.pow(2, count));
+      const jitter = Math.floor(random() * 500);
+      return base + jitter;
+    }
+
     React.useEffect(() => {
       const state = control.current;
       if (state.contextKey !== contextKey) {
@@ -50,6 +57,7 @@
         state.wasSliding = Boolean(isSliding);
         state.flight = null;
         state.retryAfter = 0;
+        state.retryCount = 0;
         clearScheduledTimeout(state.retryTimer);
         state.retryTimer = null;
         setStartAt(initialStart);
@@ -67,6 +75,7 @@
           state.wasSliding = false;
           state.lastProgress = progress;
           state.retryAfter = 0;
+          state.retryCount = 0;
           clearScheduledTimeout(state.retryTimer);
           state.retryTimer = null;
           if (Number.isFinite(videoStartMs))
@@ -82,11 +91,13 @@
       const key = queryKeyId;
       const initialRetry = !query.data && query.isError;
       if (initialRetry && state.flight === null && state.retryAfter === 0 && !state.retryTimer) {
-        state.retryAfter = now() + 3000;
+        const delay = getBackoffDelay(state.retryCount);
+        state.retryCount++;
+        state.retryAfter = now() + delay;
         state.retryTimer = scheduleTimeout(() => {
           state.retryTimer = null;
           setRetryTick(value => value + 1);
-        }, 3000);
+        }, delay);
         return;
       }
       if (!validStart || !channelId || isSliding || query.isFetching ||
@@ -106,10 +117,20 @@
       }
       Promise.resolve(request).then(result => {
         if (state.flight !== ticket) return;
-        if (result?.isError) state.retryAfter = now() + 3000;
-        else state.retryAfter = 0;
+        if (result?.isError) {
+          const delay = getBackoffDelay(state.retryCount);
+          state.retryCount++;
+          state.retryAfter = now() + delay;
+        } else {
+          state.retryCount = 0;
+          state.retryAfter = 0;
+        }
       }).catch(() => {
-        if (state.flight === ticket) state.retryAfter = now() + 3000;
+        if (state.flight === ticket) {
+          const delay = getBackoffDelay(state.retryCount);
+          state.retryCount++;
+          state.retryAfter = now() + delay;
+        }
       }).finally(() => {
         if (state.flight !== ticket) return;
         state.flight = null;

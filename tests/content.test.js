@@ -284,4 +284,34 @@ test('custom seek intercepts ArrowLeft and ArrowRight on VOD without modifying e
   const right1 = makeEvent({ key: 'ArrowRight' });
   keydown(right1);
   assert.equal(createdElement.textContent, '⟳ 15 s');
+
+  // 9. Interactive roles and select elements are not intercepted (P3-8)
+  video.currentTime = 50;
+  const selectEv = makeEvent({ key: 'ArrowLeft', target: { tagName: 'SELECT' } });
+  keydown(selectEv);
+  assert.equal(selectEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  const sliderEv = makeEvent({ key: 'ArrowRight', target: { tagName: 'DIV', getAttribute: attr => attr === 'role' ? 'slider' : null } });
+  keydown(sliderEv);
+  assert.equal(sliderEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  const shadowEv = makeEvent({
+    key: 'ArrowLeft',
+    target: { tagName: 'CUSTOM-INPUT' },
+    composedPath: () => [{ tagName: 'INPUT' }]
+  });
+  keydown(shadowEv);
+  assert.equal(shadowEv.isPrevented, false);
+  assert.equal(video.currentTime, 50);
+
+  // 10. When extension is disabled via storage, keydowns are never intercepted (P1-3)
+  video.currentTime = 50;
+  storageChangeListener({ enabled: { newValue: false } }, 'local');
+  const disabledLeft = makeEvent({ key: 'ArrowLeft' });
+  keydown(disabledLeft);
+  assert.equal(disabledLeft.isPrevented, false);
+  assert.equal(disabledLeft.isStopped, false);
+  assert.equal(video.currentTime, 50, 'video currentTime remains untouched when disabled');
 });

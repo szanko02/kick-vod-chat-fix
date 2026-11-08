@@ -11,6 +11,7 @@ const files = [];
 
 async function walk(directory) {
   for (const item of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+    if (item.name === '.DS_Store' || item.name === 'Thumbs.db' || item.name.startsWith('.')) continue;
     const absolute = join(directory, item.name);
     if (item.isDirectory()) await walk(absolute);
     else if (item.isFile()) files.push(absolute);
@@ -61,7 +62,7 @@ function makeZip(entries) {
 await walk(source);
 const manifestPath = join(source, 'manifest.json');
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-if (typeof manifest.version !== 'string' || !/^[0-9][0-9A-Za-z.+-]*$/.test(manifest.version))
+if (typeof manifest.version !== 'string' || !/^(0|[1-9]\d*)(\.(0|[1-9]\d*)){1,3}(?:[a-zA-Z0-9.-]+)?$/.test(manifest.version))
   throw new Error('Extension manifest has an invalid version');
 const entries = await Promise.all(files.sort((a, b) => relative(source, a).localeCompare(relative(source, b), 'en')).map(async path => ({
   name: relative(source, path).split(sep).join('/'),
