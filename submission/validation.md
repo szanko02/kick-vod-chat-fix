@@ -1,4 +1,4 @@
-# Verification — 1.1.4 (9 November 2026)
+# Verification — 1.1.4 (16 November 2026)
 
 - `npm test`: 30 passed, 0 failed. Validated dropped binding detection, declaration-only contract invalidation (`october-28` call-site non-invalidation), `>32KB` module/tokenizer coverage, disabled hotkey pass-through, exponential backoff, and seek interval normalization.
 - `npm run lint`: 0 errors, 0 notices, 0 warnings.
