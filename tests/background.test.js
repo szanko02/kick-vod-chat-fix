@@ -456,8 +456,8 @@ test('replay component without query contract times out after CONTRACT_WAIT_MS a
 
   assert.equal(componentFilter.closed, false, 'stream is paused awaiting contract');
 
-  // CONTRACT_WAIT_MS is 4000ms
-  app.fireTimersThrough(4000);
+  // CONTRACT_WAIT_MS is 12000ms
+  app.fireTimersThrough(12000);
   await flush();
 
   assert.equal(componentFilter.closed, true, 'component filter closed safely after contract wait timeout');
@@ -516,10 +516,47 @@ test('negative contract evidence invalidates session-wide contract and prevents 
   assert.equal(componentFilter.closed, false, 'component filter does not rewrite when contract was invalidated');
 
   // After timeout, component closes with unsupported status
-  app.fireTimersThrough(4000);
+  app.fireTimersThrough(12000);
   await flush();
 
   assert.equal(componentFilter.closed, true);
   assert.equal(decoder.decode(app.joined(componentFilter)), current, 'original unpatched code served');
 });
 
+test('real october-28 query chunk followed by october-28 replay module and call-site chunks do not self-invalidate contract', async () => {
+  const app = await makeBackground();
+  app.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const query = await readFile(new URL('./fixtures/october-28-query-contract.js', import.meta.url), 'utf8');
+  const queryFilter = app.request('oct28-query');
+  app.emit(queryFilter, encoder.encode(query));
+  queryFilter.onstop();
+  await flush();
+  assert.equal(queryFilter.closed, true);
+
+  // Unrelated chunks with call sites or AndThread methods must not invalidate the verified contract
+  for (const [id, snippet] of [
+    ['callsite-chunk', 'export const f = (e, a) => t.f.getInfiniteHistoryByChannel(e, a);'],
+    ['thread-chunk', 'export const m = { getInfiniteHistoryByChannelAndThread:(e,t)=>null };']
+  ]) {
+    const filter = app.request(id);
+    app.emit(filter, encoder.encode(snippet));
+    filter.onstop();
+    await flush();
+    assert.equal(filter.closed, true);
+  }
+
+  // Real october-28-module.js (which embeds t.f.getInfiniteHistoryByChannel(e,a) alongside ChatroomReplayEntries) arrives second
+  const replayModule = await readFile(new URL('./fixtures/october-28-module.js', import.meta.url), 'utf8');
+  const replayFilter = app.request('oct28-replay');
+  app.emit(replayFilter, encoder.encode(replayModule));
+  replayFilter.onstop();
+  await flush();
+
+  assert.equal(replayFilter.closed, true, 'october-28 replay module rewrites immediately without timing out');
+  const rewritten = decoder.decode(app.joined(replayFilter));
+  assert.match(rewritten, /KCF_replay_state_v3/, 'october-28 replay module was rewritten');
+  assert.equal((rewritten.match(/ChatroomReplayEntries/g) || []).length, 2);
+  assert.equal((await app.state()).status, 'applied');
+  assert.equal(app.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'applied'), true);
+});

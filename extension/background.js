@@ -3,7 +3,7 @@
   const MAX_RESPONSE = 2 * 1024 * 1024;
   const MAX_BUFFERED = 16 * 1024 * 1024;
   const RESPONSE_TIMEOUT_MS = 25000;
-  const CONTRACT_WAIT_MS = 4000;
+  const CONTRACT_WAIT_MS = 12000;
   const enabledState = { ready: false, enabled: false };
   const bufferedRequests = new Map();
   const pageStates = new Map();
@@ -165,9 +165,10 @@
       }
       const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 
+      const hasContractCandidate = hasQueryContractDeclaration(text);
       if (browser.runtime.getManifest) {
         if (rootContract(text)) markContract(state.tabId);
-        else if (text.includes('getInfiniteHistoryByChannel')) invalidateContract();
+        else if (hasContractCandidate) invalidateContract();
       }
       let contractVerified = globalContractVerified || verifiedContracts.has(state.tabId);
       if (!contractVerified && text.includes('"ChatroomReplayEntries"'))
@@ -194,7 +195,7 @@
         }
       }
       state.filter.close();
-      if (!text.includes('getInfiniteHistoryByChannel') && !text.includes('"ChatroomReplayEntries"')) {
+      if (!hasContractCandidate && !text.includes('"ChatroomReplayEntries"')) {
         if (irrelevantChunkUrls.size < 2000 && state.url) irrelevantChunkUrls.add(state.url);
       }
     } catch {
@@ -207,6 +208,10 @@
     } finally {
       release(state.requestId, state);
     }
+  }
+
+  function hasQueryContractDeclaration(text) {
+    return /(?:^|[{,])\s*getInfiniteHistoryByChannel\s*:/.test(text);
   }
 
   function rootContract(text) {

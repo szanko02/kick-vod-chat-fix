@@ -232,11 +232,69 @@
   const globals = new Set(['Array', 'Boolean', 'Date', 'Error', 'Infinity', 'JSON', 'Map', 'Math', 'NaN', 'Number', 'Object', 'Promise', 'RegExp', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'globalThis']);
   const operators = ['===', '!==', '>>>', '**=', '&&=', '||=', '??=', '...', '=>', '?.', '??', '&&', '||', '>=', '<=', '==', '!=', '++', '--', '+=', '-=', '*=', '/=', '%=', '**', '<<', '>>'];
 
-  function tokenize(source, maxTokens = Infinity) {
+  function skipRegexLiteral(source, start) {
+    let inClass = false;
+    for (let at = start + 1; at < source.length; at++) {
+      const ch = source[at];
+      if (ch === '\\') { at++; continue; }
+      if (ch === '[') inClass = true;
+      else if (ch === ']') inClass = false;
+      else if (ch === '/' && !inClass) {
+        at++;
+        while (at < source.length && /[A-Za-z]/.test(source[at])) at++;
+        return at;
+      } else if (/[\r\n]/.test(ch)) return -1;
+    }
+    return -1;
+  }
+
+  function tokenize(source, maxTokens = Infinity, stopAtClosingBrace = false) {
     const tokens = [];
+    let braceDepth = 0;
+    let regexAllowed = true;
+    let pendingControl = false;
+    const parenStack = [];
+    const templateStack = [];
     const push = token => {
       tokens.push(token);
+      if (token.type === 'punctuation') {
+        if (token.value === '{') {
+          braceDepth++;
+        } else if (token.value === '}') {
+          if (braceDepth === 0 && stopAtClosingBrace) return true;
+          if (braceDepth > 0) braceDepth--;
+        }
+      }
       return tokens.length === maxTokens;
+    };
+    const scanTemplateChunk = (fromIndex, tokenStart) => {
+      let cursor = fromIndex;
+      while (cursor < source.length) {
+        if (source[cursor] === '\\') {
+          cursor += 2;
+          continue;
+        }
+        if (source[cursor] === '`') {
+          cursor++;
+          regexAllowed = false;
+          pendingControl = false;
+          return { nextAt: cursor, stop: push({ type: 'literal', value: source.slice(tokenStart, cursor), start: tokenStart, end: cursor }) };
+        }
+        if (source[cursor] === '$' && source[cursor + 1] === '{') {
+          if (push({ type: 'literal', value: source.slice(tokenStart, cursor), start: tokenStart, end: cursor })) {
+            return { nextAt: cursor, stop: true };
+          }
+          if (push({ type: 'punctuation', value: '{', start: cursor, end: cursor + 2 })) {
+            return { nextAt: cursor + 2, stop: true };
+          }
+          templateStack.push(0);
+          regexAllowed = true;
+          pendingControl = false;
+          return { nextAt: cursor + 2, stop: false };
+        }
+        cursor++;
+      }
+      return null;
     };
     for (let at = 0; at < source.length;) {
       const ch = source[at];
@@ -253,36 +311,98 @@
         continue;
       }
       const start = at;
-      if (ch === '"' || ch === "'" || ch === '`') {
+      if (ch === '"' || ch === "'") {
         const quote = ch;
         at++;
         let closed = false;
         while (at < source.length) {
           if (source[at] === '\\') { at += 2; continue; }
+          if (/[\r\n]/.test(source[at])) return null;
           if (source[at++] === quote) { closed = true; break; }
         }
         if (!closed) return null;
+        regexAllowed = false;
+        pendingControl = false;
         if (push({ type: 'literal', value: source.slice(start, at), start, end: at })) return tokens;
         continue;
+      }
+      if (ch === '`') {
+        const chunk = scanTemplateChunk(at + 1, start);
+        if (!chunk) return null;
+        at = chunk.nextAt;
+        if (chunk.stop) return tokens;
+        continue;
+      }
+      if (ch === '}' && templateStack.length > 0 && templateStack[templateStack.length - 1] === 0) {
+        templateStack.pop();
+        if (push({ type: 'punctuation', value: '}', start, end: at + 1 })) return tokens;
+        const chunk = scanTemplateChunk(at + 1, at + 1);
+        if (!chunk) return null;
+        at = chunk.nextAt;
+        if (chunk.stop) return tokens;
+        continue;
+      }
+      if (ch === '/' && regexAllowed) {
+        const regexEnd = skipRegexLiteral(source, at);
+        if (regexEnd >= 0) {
+          at = regexEnd;
+          regexAllowed = false;
+          pendingControl = false;
+          if (push({ type: 'literal', value: source.slice(start, at), start, end: at })) return tokens;
+          continue;
+        }
       }
       if (/[A-Za-z_$]/.test(ch)) {
         at++;
         while (at < source.length && /[A-Za-z0-9_$]/.test(source[at])) at++;
-        if (push({ type: 'identifier', value: source.slice(start, at), start, end: at })) return tokens;
+        const word = source.slice(start, at);
+        const prev = tokens[tokens.length - 1]?.value;
+        const isProp = prev === '.' || prev === '?.';
+        if (!isProp && controlKeywords.has(word)) pendingControl = true;
+        else if (isProp || word !== 'await' || !pendingControl) pendingControl = false;
+        regexAllowed = !isProp && expressionKeywords.has(word);
+        if (push({ type: 'identifier', value: word, start, end: at })) return tokens;
         continue;
       }
       if (/[0-9]/.test(ch)) {
         const match = source.slice(at).match(/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?n?)/);
         if (!match) return null;
         at += match[0].length;
+        pendingControl = false;
+        regexAllowed = false;
         if (push({ type: 'number', value: match[0], start, end: at })) return tokens;
         continue;
       }
       const operator = operators.find(value => source.startsWith(value, at));
-      at += operator?.length || 1;
-      if (push({ type: 'punctuation', value: operator || ch, start, end: at })) return tokens;
+      const value = operator || ch;
+      at += value.length;
+      if (value === '{') {
+        if (templateStack.length > 0) templateStack[templateStack.length - 1]++;
+        pendingControl = false;
+        regexAllowed = true;
+      } else if (value === '}') {
+        if (templateStack.length > 0 && templateStack[templateStack.length - 1] > 0) {
+          templateStack[templateStack.length - 1]--;
+        }
+        pendingControl = false;
+        regexAllowed = true;
+      } else if (value === '(') {
+        parenStack.push(pendingControl);
+        pendingControl = false;
+        regexAllowed = true;
+      } else if (value === ')') {
+        regexAllowed = parenStack.pop() === true;
+        pendingControl = false;
+      } else if (value === ']' || value === '++' || value === '--' || value === '.' || value === '?.') {
+        pendingControl = false;
+        regexAllowed = false;
+      } else {
+        pendingControl = false;
+        regexAllowed = true;
+      }
+      if (push({ type: 'punctuation', value, start, end: at })) return tokens;
     }
-    return tokens;
+    return templateStack.length === 0 ? tokens : null;
   }
 
   function parseImports(tokens) {
@@ -362,7 +482,7 @@
   function matchCanonicalFragment(adapter, source, start) {
     const { expectedTokens, prefixCount, expectedImports } = adapter;
     if (!expectedTokens || !prefixCount || !expectedImports) return null;
-    const candidateTokens = tokenize(source.slice(start, start + 8192), expectedTokens.length);
+    const candidateTokens = tokenize(source.slice(start), expectedTokens.length);
     if (!candidateTokens || candidateTokens.length < expectedTokens.length) return null;
     const candidateImports = parseImports(candidateTokens);
     if (!candidateImports || expectedImports.aliases.length !== candidateImports.aliases.length) return null;
@@ -389,7 +509,7 @@
     if (declarations.length !== 1) return null;
     const offset = declarations[0];
     for (const expected of tokenizedQueryMethods) {
-      const candidate = tokenize(source.slice(offset, offset + 8192), expected.length + 1);
+      const candidate = tokenize(source.slice(offset), expected.length + 1);
       if (candidate && candidate.length === expected.length + 1 &&
           compareTokens(expected, candidate.slice(0, expected.length)) &&
           candidate[expected.length].value === ',') {
@@ -423,7 +543,7 @@
     if (!droppedNames || droppedNames.length === 0) return false;
     const droppedActual = new Set(droppedNames.map(name => mapping?.get(name) || name));
     let depth = 0;
-    const tokens = tokenize(source.slice(segmentEnd, segmentEnd + 32768));
+    const tokens = tokenize(source.slice(segmentEnd), Infinity, true);
     if (!tokens) return true;
     for (let index = 0; index < tokens.length; index++) {
       const token = tokens[index];

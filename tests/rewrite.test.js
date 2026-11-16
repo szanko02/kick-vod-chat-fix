@@ -118,6 +118,53 @@ test('rejects modules referencing dropped bindings in the remaining component bo
   const objKey = october28.replace('},[E,q,S,y]);', '},[E,q,S,y]);const obj={B:1,P:2};');
   const objResult = globalThis.KCFSourceRewrite.adaptBundleSource(objKey, { contractVerified: true });
   assert.equal(objResult.status, 'applied');
+
+  const regexAndTemplate = october28.replace(
+    '},[E,q,S,y]);',
+    '},[E,q,S,y]);const re=/["\'}`]+/g,tpl=`head-${`nested-${E}`}-tail`;'
+  );
+  const regexAndTemplateResult = globalThis.KCFSourceRewrite.adaptBundleSource(regexAndTemplate, { contractVerified: true });
+  assert.equal(regexAndTemplateResult.status, 'applied');
+
+  const templateDroppedRef = october28.replace(
+    '},[E,q,S,y]);',
+    '},[E,q,S,y]);const tpl=`head-${B}-tail`;'
+  );
+  const templateDroppedResult = globalThis.KCFSourceRewrite.adaptBundleSource(templateDroppedRef, { contractVerified: true });
+  assert.equal(templateDroppedResult.status, 'unsupported');
+  assert.equal(templateDroppedResult.reason, 'unknown-segment');
+});
+
+test('patches large >40KB modules with literals spanning past 32KB after segmentEnd', async () => {
+  const october28 = await fixture('october-28-module.js');
+  const pad36k = 'ease-in-'.repeat(4600);
+
+  // 1. Large module (>60KB) where a string literal in a subsequent module crosses segmentEnd + 32768
+  const paddedAfterComponent = `${october28};const tailClasses="${pad36k}";`;
+  assert.ok(paddedAfterComponent.length > 60000);
+  const afterResult = globalThis.KCFSourceRewrite.adaptBundleSource(paddedAfterComponent, { contractVerified: true });
+  assert.equal(afterResult.status, 'applied', afterResult.reason || afterResult.status);
+  assert.match(afterResult.source, /KCF_replay_state_v3/);
+
+  // 2. Large component body (>40KB inside the component before its closing brace) with string literal crossing 32KB
+  const paddedInsideComponent = october28.replace(
+    '},[E,q,S,y]);',
+    `},[E,q,S,y]);const inlineBanner="${pad36k}";`
+  );
+  assert.ok(paddedInsideComponent.length > 60000);
+  const insideResult = globalThis.KCFSourceRewrite.adaptBundleSource(paddedInsideComponent, { contractVerified: true });
+  assert.equal(insideResult.status, 'applied', insideResult.reason || insideResult.status);
+  assert.match(insideResult.source, /KCF_replay_state_v3/);
+
+  // 3. Dropped binding referenced after >32KB inside the component body is still caught and rejected
+  const droppedPast32k = october28.replace(
+    '},[E,q,S,y]);',
+    `},[E,q,S,y]);const inlineBanner="${pad36k}";console.log(B);`
+  );
+  const droppedPast32kResult = globalThis.KCFSourceRewrite.adaptBundleSource(droppedPast32k, { contractVerified: true });
+  assert.equal(droppedPast32kResult.status, 'unsupported');
+  assert.equal(droppedPast32kResult.reason, 'unknown-segment');
+  assert.equal(droppedPast32kResult.source, droppedPast32k);
 });
 
 test('contains no downloaded-code execution mechanism', async () => {

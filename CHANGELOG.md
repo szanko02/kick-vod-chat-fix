@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Added dropped binding reference validation in `rewrite.js` to prevent runtime ReferenceErrors if Kick uses variables removed by adapter replacement.
-- Implemented query contract invalidation upon negative evidence (`getInfiniteHistoryByChannel` present with mismatched contract) and reduced contract wait timeout to 4000ms.
+- Implemented declaration-only query contract invalidation (`hasQueryContractDeclaration`, preventing call sites and `...AndThread` from self-invalidating) upon negative evidence and adjusted contract wait timeout (`CONTRACT_WAIT_MS`) to 12000ms.
 - Fixed hotkeys intercepting ArrowLeft/ArrowRight when the extension is disabled in storage or when focus is on `<select>`, `role="slider"`, `role="textbox"`, or other interactive elements.
 - Added exponential backoff with jitter and 60-second cap on history query retries in `replay-template.js`.
-- Added fast `includes` prefilters and tokenization precomputation for bundle rewriting; added irrelevant chunk URL caching in `background.js`.
+- Added fast `includes` prefilters and tokenization precomputation for bundle rewriting; fixed regex/template literal tokenization and removed the 8KB/32KB truncation limits in `rewrite.js`; added irrelevant chunk URL caching in `background.js`.
 - Throttled content script `METRICS` messages to at most once per second; cached badge status per tab with promise rejection handling.
 - Added stream write safety guard in `finishResponse` preventing double-write on stream write failures.
 - Unified seek interval normalization across all extension contexts in `seek-utils.js` and added auto-correction on input blur.
