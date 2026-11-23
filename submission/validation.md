@@ -1,3 +1,10 @@
+# Verification — 1.1.5 (23 November 2026)
+
+- `npm test`: 33 passed, 0 failed. Validated structural scope-aware query contract matching (inner arrow scoping, 1–2 char minified exports, `+5e3`/`+5000`, `,`/`}` terminators), minified adapter export/selector-parameter resilience, and November 23 Turbopack bundle fixtures (`november-23-module.js`, `november-23-query-contract.js`). Live November 23 chunk simulation (78 chunks, alphabetical/reverse/contract-last orders) applied `october-28-2026` to `0jzr-iqz6nxix.js` with `globalContractVerified: true`, 0 invalidations, and 0 syntax errors.
+- `npm run lint`: 0 errors, 0 notices, 0 warnings.
+- `npm run build`: deterministic ZIP/XPI `kick-vod-chat-fix-1.1.5.xpi`.
+- `npm run pack-source`: generated review source archive `kick-vod-chat-fix-1.1.5-source.zip`.
+
 # Verification — 1.1.4 (16 November 2026)
 
 - `npm test`: 30 passed, 0 failed. Validated dropped binding detection, declaration-only contract invalidation (`october-28` call-site non-invalidation), `>32KB` module/tokenizer coverage, disabled hotkey pass-through, exponential backoff, and seek interval normalization.

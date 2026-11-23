@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2026-11-23
+
+### Fixed
+- Replaced the flat token bijection in `detectQueryContract` (`extension/rewrite.js`) with structural, scope-aware matching (`matchQueryContract`) that accepts `infiniteQueryOptions` or 1–2 char minified Turbopack exports (e.g. `(0,n.a)`), independent inner arrow parameter scopes for `queryFn` and `getNextPageParam`, `+5e3`/`+5000`, and `,`/`}` terminators, fixing the red `!` (`unsupported`) badge on Kick's November 23, 2026 deployment.
+- Hardened minified `ChatroomReplayEntries` adapters (`october-28-2026`, `october-19-2026`) against future 1–2 char Turbopack export renamings (`playerStoreFn`, `queryFn`, `historyFn`) and selector callback parameter renames while keeping named adapters strict.
+- Added November 23 live bundle fixtures (`november-23-query-contract.js`, `november-23-module.js`) and regression test coverage in `tests/rewrite.test.js` and `tests/background.test.js`.
 ## [1.1.4] - 2026-11-16
 
 ### Fixed

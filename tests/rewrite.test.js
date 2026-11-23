@@ -13,6 +13,7 @@ test('recognizes the exact stored-page query contract', async () => {
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('october-19-query-contract.js')), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('october-21-query-contract.js')), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('october-28-query-contract.js')), 'october-2026');
+  assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(await fixture('november-23-query-contract.js')), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(`const api={${query}};const re=/["']+/;`), 'october-2026');
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract(`const example=${JSON.stringify(query)};`), null);
   assert.equal(globalThis.KCFSourceRewrite.detectQueryContract('const example=`' + query + '`;'), null);
@@ -28,7 +29,7 @@ test('recognizes the exact stored-page query contract', async () => {
 });
 
 test('patches only the extracted current and legacy modules', async () => {
-  for (const name of ['current-module.js', 'legacy-module.js', 'october-14-module.js', 'october-14-ru-module.js', 'october-19-module.js', 'october-21-module.js', 'october-28-module.js']) {
+  for (const name of ['current-module.js', 'legacy-module.js', 'october-14-module.js', 'october-14-ru-module.js', 'october-19-module.js', 'october-21-module.js', 'october-28-module.js', 'november-23-module.js']) {
     const source = await fixture(name);
     const result = globalThis.KCFSourceRewrite.adaptBundleSource(source, { contractVerified: true });
     assert.equal(result.status, 'applied', `${name}: ${result.reason || result.status}`);
@@ -37,7 +38,7 @@ test('patches only the extracted current and legacy modules', async () => {
     assert.match(result.source, /maxPages: 24/);
     assert.match(result.source, /refetchOnWindowFocus: false/);
     assert.match(result.source, /created_at/);
-    const expectedMatches = (name === 'october-21-module.js' || name === 'october-28-module.js') ? 2 : 1;
+    const expectedMatches = (name === 'october-21-module.js' || name === 'october-28-module.js' || name === 'november-23-module.js') ? 2 : 1;
     assert.equal((result.source.match(/ChatroomReplayEntries/g) || []).length, expectedMatches);
   }
   const latest = await fixture('latest-module.js');
@@ -165,6 +166,68 @@ test('patches large >40KB modules with literals spanning past 32KB after segment
   assert.equal(droppedPast32kResult.status, 'unsupported');
   assert.equal(droppedPast32kResult.reason, 'unknown-segment');
   assert.equal(droppedPast32kResult.source, droppedPast32k);
+});
+
+test('detectQueryContract handles inner arrow scoping and 1-2 char minified exports', async () => {
+  const detect = source => globalThis.KCFSourceRewrite.detectQueryContract(source);
+  const nov23Query = await fixture('november-23-query-contract.js');
+  const nov23Method = 'getInfiniteHistoryByChannel:(e,t)=>(0,n.a)({queryKey:["WebChatHistory","getHistoryByChannel",e,t],queryFn:({signal:t,pageParam:a})=>s(t,e,a.start_time),initialPageParam:{start_time:t},getNextPageParam:(e,t,a)=>{if(e?.data)return{start_time:new Date(new Date(a.start_time).getTime()+5e3).toISOString()}}})';
+
+  assert.equal(detect(nov23Query), 'october-2026');
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('(0,n.a)', '(0,n.z)'))), 'october-2026');
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('(0,n.a)', '(0,n.ab)').replace('+5e3', '+5000'))), 'october-2026');
+  assert.equal(detect(`const api={other:1,${nov23Method.replace('(0,n.a)', '(0,n.z)').replace('+5e3', '+5000')}};`), 'october-2026');
+
+  const freshParamsMethod = nov23Method
+    .replace('queryFn:({signal:t,pageParam:a})=>s(t,e,a.start_time)', 'queryFn:({signal:q,pageParam:p})=>s(q,e,p.start_time)')
+    .replace('getNextPageParam:(e,t,a)=>{if(e?.data)return{start_time:new Date(new Date(a.start_time).getTime()+5e3).toISOString()}}', 'getNextPageParam:(l,m,p)=>{if(l?.data)return{start_time:new Date(new Date(p.start_time).getTime()+5e3).toISOString()}}');
+  assert.equal(detect(nov23Query.replace(nov23Method, freshParamsMethod)), 'october-2026');
+
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('(0,n.a)', '(0,n.queryOptions)'))), null);
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('(0,n.a)', '(0,n.useQuery)'))), null);
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('queryFn:({signal:t,pageParam:a})=>s(t,e,a.start_time)', 'queryFn:({signal:e,pageParam:a})=>s(e,e,a.start_time)'))), null);
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('getNextPageParam:(e,t,a)', 'getNextPageParam:(e,e,a)'))), null);
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('+5e3', '+1e4'))), null);
+  assert.equal(detect(nov23Query.replace(nov23Method, nov23Method.replace('+5e3', '+10e3'))), null);
+});
+
+test('adaptBundleSource preserves minified export resilience and selector param flexibility', async () => {
+  const apply = source => globalThis.KCFSourceRewrite.adaptBundleSource(source, { contractVerified: true });
+  const october28 = await fixture('october-28-module.js');
+  const nov23 = await fixture('november-23-module.js');
+
+  const remappedOct28 = october28
+    .replace('(0,l.f)(e=>e.currentProgressInMs)', '(0,l.z)(e=>e.currentProgressInMs)')
+    .replace('(0,l.f)(e=>e.isSeekbarSliding)', '(0,l.z)(e=>e.isSeekbarSliding)')
+    .replace('(0,r.f)({...(0,i.I)({channelId:w,startTime:B})', '(0,r.a)({...(0,i.H)({channelId:w,startTime:B})');
+  const remappedOct28Result = apply(remappedOct28);
+  assert.equal(remappedOct28Result.status, 'applied', remappedOct28Result.reason || remappedOct28Result.status);
+  assert.match(remappedOct28Result.source, /\(0,r\.a\)/);
+  assert.match(remappedOct28Result.source, /\(0,i\.H\)/);
+
+  const remappedNov23 = nov23
+    .replace('(0,l.f)(e=>e.currentProgressInMs)', '(0,l.z)(e=>e.currentProgressInMs)')
+    .replace('(0,l.f)(e=>e.isSeekbarSliding)', '(0,l.z)(e=>e.isSeekbarSliding)')
+    .replace('(0,a.f)({...(0,i.I)({channelId:b,startTime:N})', '(0,a.b)({...(0,i.H)({channelId:b,startTime:N})');
+  const remappedNov23Result = apply(remappedNov23);
+  assert.equal(remappedNov23Result.status, 'applied', remappedNov23Result.reason || remappedNov23Result.status);
+  assert.match(remappedNov23Result.source, /\(0,a\.b\)/);
+  assert.match(remappedNov23Result.source, /\(0,i\.H\)/);
+
+  const selectorRenamedNov23 = nov23.replace('e=>e.currentProgressInMs', 'p=>p.currentProgressInMs');
+  const selectorRenamedOct28 = october28.replace('e=>e.currentProgressInMs', 'p=>p.currentProgressInMs');
+  assert.equal(apply(selectorRenamedNov23).status, 'applied');
+  assert.equal(apply(selectorRenamedOct28).status, 'applied');
+
+  const mismatchedStoreOct28 = october28.replace('(0,l.f)(e=>e.isSeekbarSliding)', '(0,l.g)(e=>e.isSeekbarSliding)');
+  const mismatchedStoreNov23 = nov23.replace('(0,l.f)(e=>e.isSeekbarSliding)', '(0,l.g)(e=>e.isSeekbarSliding)');
+  assert.equal(apply(mismatchedStoreOct28).status, 'unsupported');
+  assert.equal(apply(mismatchedStoreNov23).status, 'unsupported');
+
+  const namedQueryOct28 = october28.replace('(0,r.f)({...(0,i.I)({channelId:w,startTime:B})', '(0,r.useQuery)({...(0,i.I)({channelId:w,startTime:B})');
+  const namedQueryNov23 = nov23.replace('(0,a.f)({...(0,i.I)({channelId:b,startTime:N})', '(0,a.useQuery)({...(0,i.I)({channelId:b,startTime:N})');
+  assert.equal(apply(namedQueryOct28).status, 'unsupported');
+  assert.equal(apply(namedQueryNov23).status, 'unsupported');
 });
 
 test('contains no downloaded-code execution mechanism', async () => {

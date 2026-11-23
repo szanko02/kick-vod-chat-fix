@@ -1,21 +1,19 @@
 (function (root) {
   const marker = '"ChatroomReplayEntries"';
-  const queryContract = 'getNextPageParam:(e,t,n)=>{if(e?.data)return{start_time:new Date(new Date(n.start_time).getTime()+5e3).toISOString()}}';
-  const queryMethods = [
-    'getInfiniteHistoryByChannel:(e,n)=>(0,t.infiniteQueryOptions)({queryKey:["WebChatHistory","getHistoryByChannel",e,n],queryFn:({signal:t,pageParam:n})=>o(t,e,n.start_time),initialPageParam:{start_time:n},' + queryContract + '})',
-    'getInfiniteHistoryByChannel:(e,n)=>(0,t.f)({queryKey:["WebChatHistory","getHistoryByChannel",e,n],queryFn:({signal:t,pageParam:n})=>o(t,e,n.start_time),initialPageParam:{start_time:n},' + queryContract + '})'
-  ];
 
-  function buildReplacement(adapter, names) {
+  function buildReplacement(adapter, names, matchedExports) {
     const v = name => names.get(name) || name;
     const r = adapter.roles;
-    const hook = `(${root.KCFReplayTemplate.toString()})({React:${v(r.react)},useInfiniteQuery:KCF_options_v3=>(0,${v(r.query)}.${r.queryFn})(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v(r.history)}.${r.historyFn})({channelId:${v(r.channelId)},startTime:KCF_start_v3}),initialStart:${v(r.initialStart)},videoStartMs:${v(r.videoStartMs)},progress:${v(r.progress)},isSliding:${v(r.isSliding)},channelId:${v(r.channelId)}})`;
+    const queryFn = matchedExports?.get('queryFn') || r.queryFn;
+    const historyFn = matchedExports?.get('historyFn') || r.historyFn;
+    const hook = `(${root.KCFReplayTemplate.toString()})({React:${v(r.react)},useInfiniteQuery:KCF_options_v3=>(0,${v(r.query)}.${queryFn})(KCF_options_v3),createOptions:KCF_start_v3=>(0,${v(r.history)}.${historyFn})({channelId:${v(r.channelId)},startTime:KCF_start_v3}),initialStart:${v(r.initialStart)},videoStartMs:${v(r.videoStartMs)},progress:${v(r.progress)},isSliding:${v(r.isSliding)},channelId:${v(r.channelId)}})`;
     return `,[${v(r.isPaused)},${v(r.setIsPaused)}]=(0,${v(r.react)}.useState)(!1),KCF_replay_state_v3=${hook},${v(r.data)}=KCF_replay_state_v3.data,${v(r.fetchNextPage)}=KCF_replay_state_v3.fetchNextPage,${v(r.displayMs)}=KCF_replay_state_v3.displayMs;`;
   }
 
   const adapters = [
     {
       id: 'october-28-2026',
+      minifiedExports: true,
       imports: 'var t=e.i(224034),a=e.i(402260),r=e.i(212171),s=e.i(178869),n=e.i(123499),i=e.i(213039),l=e.i(159838),o=e.i(948590),u=e.i(119599),d=e.i(633841),c=e.i(149803),g=e.i(152098);',
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:f,clipDialogProgress:h,withoutOpenIdentity:m=!1,withoutOpenThread:p=!1,className:v})=>{let y=new Date(e).getTime(),b=(0,a.useRef)(null),{channelId:w}=(0,u.useChatroomContext)(),x=(0,l.f)(e=>e.currentProgressInMs),C=(0,l.f)(e=>e.isSeekbarSliding),S=h??x',
       before: ',j=(0,a.useRef)(0),k=(0,a.useRef)(-2500),[E,_]=(0,a.useState)(0),[B,P]=(0,a.useState)(e),[T,N]=(0,a.useState)(!1),{data:L,fetchNextPage:q}=(0,r.f)({...(0,i.I)({channelId:w,startTime:B}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!C)});(0,a.useEffect)(()=>{if(S-j.current>2e3||S<j.current){j.current=S,k.current=S-2500,_(S),P(new Date(y+S).toISOString());return}S>E+500&&_(S),j.current=S,S-k.current>=5e3&&(q(),k.current=S)},[E,q,S,y]);',
@@ -26,10 +24,11 @@
         isPaused: 'T', setIsPaused: 'N', data: 'L', fetchNextPage: 'q', displayMs: 'E'
       },
       dropped: ['j', 'k', '_', 'B', 'P'],
-      build(source, names) { return buildReplacement(this, names); }
+      build(source, names, matchedExports) { return buildReplacement(this, names, matchedExports); }
     },
     {
       id: 'october-19-2026',
+      minifiedExports: true,
       imports: 'var t=e.i(224034),a=e.i(402260),r=e.i(212171),s=e.i(123499),n=e.i(213039),i=e.i(159838),l=e.i(820476),o=e.i(948590),d=e.i(119599),u=e.i(633841),c=e.i(149803),g=e.i(152098);',
       componentPrefix: 'e.s(["ChatroomReplayEntries",0,({startedAt:e,channelSlug:f,clipDialogProgress:h,withoutOpenIdentity:m=!1,withoutOpenThread:p=!1,className:v})=>{let y=new Date(e).getTime(),b=(0,a.useRef)(null),{channelId:x}=(0,d.useChatroomContext)(),w=(0,i.f)(e=>e.currentProgressInMs),C=(0,i.f)(e=>e.isSeekbarSliding),j=h??w',
       before: ',k=(0,a.useRef)(0),S=(0,a.useRef)(-2500),[B,_]=(0,a.useState)(0),[E,P]=(0,a.useState)(e),[T,N]=(0,a.useState)(!1),{data:q,fetchNextPage:L}=(0,r.f)({...(0,n.I)({channelId:x,startTime:E}),enabled:!!("0001-01-01T00:00:00Z"!==e&&!C)});(0,a.useEffect)(()=>{if(j-k.current>2e3||j<k.current){k.current=j,S.current=j-2500,_(j),P(new Date(y+j).toISOString());return}j>B+500&&_(j),k.current=j,j-S.current>=5e3&&(L(),S.current=j)},[B,L,j,y]);',
@@ -40,7 +39,7 @@
         isPaused: 'T', setIsPaused: 'N', data: 'q', fetchNextPage: 'L', displayMs: 'B'
       },
       dropped: ['k', 'S', '_', 'E', 'P'],
-      build(source, names) { return buildReplacement(this, names); }
+      build(source, names, matchedExports) { return buildReplacement(this, names, matchedExports); }
     },
     {
       id: 'legacy-v0.2',
@@ -54,7 +53,7 @@
         isPaused: 'D', setIsPaused: 'R', data: 'P', fetchNextPage: 'I', displayMs: 'B'
       },
       dropped: ['_', 'q', 'Q', 'O', 'k'],
-      build(source, names) { return buildReplacement(this, names); }
+      build(source, names, matchedExports) { return buildReplacement(this, names, matchedExports); }
     },
     {
       id: 'october-2026',
@@ -68,7 +67,7 @@
         isPaused: 'O', setIsPaused: 'k', data: 'D', fetchNextPage: 'B', displayMs: 'I'
       },
       dropped: ['R', 'N', 'T', 'j', 'L'],
-      build(source, names) { return buildReplacement(this, names); }
+      build(source, names, matchedExports) { return buildReplacement(this, names, matchedExports); }
     },
     {
       id: 'october-14-2026',
@@ -82,7 +81,7 @@
         isPaused: 'P', setIsPaused: 'F', data: 'I', fetchNextPage: 'T', displayMs: 'k'
       },
       dropped: ['E', 'B', '_', 'q', 'j'],
-      build(source, names) { return buildReplacement(this, names); }
+      build(source, names, matchedExports) { return buildReplacement(this, names, matchedExports); }
     }
   ];
 
@@ -428,6 +427,14 @@
     return null;
   }
 
+  function isDynamicIdentifier(token) {
+    return token?.type === 'identifier' && !keywords.has(token.value) && !globals.has(token.value);
+  }
+
+  function isShortMinifiedExport(name) {
+    return typeof name === 'string' && /^[A-Za-z_$][A-Za-z0-9_$]?$/.test(name) && !keywords.has(name);
+  }
+
   function isStaticIdentifier(tokens, index) {
     const token = tokens[index];
     return keywords.has(token.value) || globals.has(token.value) ||
@@ -435,17 +442,90 @@
       tokens[index + 1]?.value === ':';
   }
 
-  function compareTokens(expected, candidate, expectedImportIds = [], candidateImportIds = []) {
+  function computeAdapterSlots(tokens, adapterId) {
+    const dynamicExportSlots = new Map();
+    const localScopeSlots = new Map();
+    let playerStoreCount = 0;
+    let queryCount = 0;
+    let historyCount = 0;
+
+    for (let i = 0; i + 10 < tokens.length; i++) {
+      if (tokens[i].value !== '(' || tokens[i + 1].type !== 'number' || tokens[i + 1].value !== '0' ||
+          tokens[i + 2].value !== ',' || tokens[i + 3].type !== 'identifier' ||
+          tokens[i + 4].value !== '.' || tokens[i + 5].type !== 'identifier' ||
+          tokens[i + 6].value !== ')' || tokens[i + 7].value !== '(') {
+        continue;
+      }
+      if (i + 13 < tokens.length &&
+          tokens[i + 8].type === 'identifier' && tokens[i + 9].value === '=>' &&
+          tokens[i + 10].type === 'identifier' && tokens[i + 10].value === tokens[i + 8].value &&
+          tokens[i + 11].value === '.' && tokens[i + 12].type === 'identifier' &&
+          tokens[i + 13].value === ')') {
+        const field = tokens[i + 12].value;
+        if (field === 'currentProgressInMs' || field === 'isSeekbarSliding') {
+          const scopeSlot = field === 'currentProgressInMs' ? 'progressSelector' : 'slidingSelector';
+          dynamicExportSlots.set(i + 5, 'playerStoreFn');
+          localScopeSlots.set(i + 8, scopeSlot);
+          localScopeSlots.set(i + 10, scopeSlot);
+          playerStoreCount++;
+          continue;
+        }
+      }
+      if (tokens[i + 8].value === '{' && tokens[i + 9].value === '...') {
+        dynamicExportSlots.set(i + 5, 'queryFn');
+        queryCount++;
+        continue;
+      }
+      if (tokens[i + 8].value === '{' && tokens[i + 9].type === 'identifier' &&
+          tokens[i + 9].value === 'channelId' && tokens[i + 10].value === ':') {
+        dynamicExportSlots.set(i + 5, 'historyFn');
+        historyCount++;
+      }
+    }
+
+    if (playerStoreCount !== 2 || queryCount !== 1 || historyCount !== 1 ||
+        dynamicExportSlots.size !== 4 || localScopeSlots.size !== 4) {
+      throw new Error(`Failed to precompute export slots for adapter ${adapterId}`);
+    }
+    return { dynamicExportSlots, localScopeSlots };
+  }
+
+  function compareTokens(expected, candidate, options = {}) {
+    const {
+      expectedImportIds = [],
+      candidateImportIds = [],
+      dynamicExportSlots = null,
+      localScopeSlots = null
+    } = options;
     if (!expected || !candidate || expected.length !== candidate.length) return null;
     const ignoredNumbers = new Set(expectedImportIds);
     const candidateNumbers = new Set(candidateImportIds);
     const expectedToCandidate = new Map();
     const candidateToExpected = new Map();
+    const matchedExports = new Map();
+    const localScopeBindings = new Map();
+
     for (let index = 0; index < expected.length; index++) {
       const left = expected[index];
       const right = candidate[index];
       if (left.type !== right.type) return null;
       if (left.type === 'identifier') {
+        const exportSlot = dynamicExportSlots?.get(index);
+        if (exportSlot) {
+          if (!isShortMinifiedExport(right.value)) return null;
+          const priorExport = matchedExports.get(exportSlot);
+          if (priorExport !== undefined && priorExport !== right.value) return null;
+          matchedExports.set(exportSlot, right.value);
+          continue;
+        }
+        const scopeSlot = localScopeSlots?.get(index);
+        if (scopeSlot) {
+          if (!isDynamicIdentifier(right)) return null;
+          const priorBinding = localScopeBindings.get(scopeSlot);
+          if (priorBinding !== undefined && priorBinding !== right.value) return null;
+          localScopeBindings.set(scopeSlot, right.value);
+          continue;
+        }
         const leftStatic = isStaticIdentifier(expected, index);
         const rightStatic = isStaticIdentifier(candidate, index);
         if (leftStatic !== rightStatic) return null;
@@ -463,7 +543,7 @@
         if (!/^\d+$/.test(left.value) || !/^\d+$/.test(right.value)) return null;
       } else if (left.value !== right.value) return null;
     }
-    return expectedToCandidate;
+    return { mapping: expectedToCandidate, matchedExports };
   }
 
   // Precompute tokenization and imports for all adapters
@@ -474,27 +554,134 @@
     adapter.expectedTokens = tokenize(expectedSource);
     adapter.prefixCount = adapter.prefixTokens ? adapter.prefixTokens.length : 0;
     adapter.expectedImports = adapter.expectedTokens ? parseImports(adapter.expectedTokens) : null;
+    if (adapter.minifiedExports && adapter.expectedTokens) {
+      const slots = computeAdapterSlots(adapter.expectedTokens, adapter.id);
+      adapter.dynamicExportSlots = slots.dynamicExportSlots;
+      adapter.localScopeSlots = slots.localScopeSlots;
+    }
   }
 
-  // Precompute tokenized query methods
-  const tokenizedQueryMethods = queryMethods.map(m => tokenize(m)).filter(Boolean);
-
   function matchCanonicalFragment(adapter, source, start) {
-    const { expectedTokens, prefixCount, expectedImports } = adapter;
+    const { expectedTokens, prefixCount, expectedImports, dynamicExportSlots, localScopeSlots } = adapter;
     if (!expectedTokens || !prefixCount || !expectedImports) return null;
     const candidateTokens = tokenize(source.slice(start), expectedTokens.length);
     if (!candidateTokens || candidateTokens.length < expectedTokens.length) return null;
     const candidateImports = parseImports(candidateTokens);
     if (!candidateImports || expectedImports.aliases.length !== candidateImports.aliases.length) return null;
-    const mapping = compareTokens(expectedTokens, candidateTokens.slice(0, expectedTokens.length),
-      expectedImports.idIndexes, candidateImports.idIndexes);
-    if (!mapping) return null;
+    const comparison = compareTokens(expectedTokens, candidateTokens.slice(0, expectedTokens.length), {
+      expectedImportIds: expectedImports.idIndexes,
+      candidateImportIds: candidateImports.idIndexes,
+      dynamicExportSlots,
+      localScopeSlots
+    });
+    if (!comparison) return null;
     const fragment = candidateTokens.slice(0, expectedTokens.length);
     return {
-      mapping,
+      mapping: comparison.mapping,
+      matchedExports: comparison.matchedExports,
       segmentStart: start + fragment[prefixCount].start,
       segmentEnd: start + fragment[fragment.length - 1].end
     };
+  }
+
+  function matchQueryContract(tokens) {
+    if (!tokens || !tokens.length) return false;
+    let at = 0;
+    const eat = (type, value) => {
+      const token = tokens[at];
+      if (!token || token.type !== type || (value !== undefined && token.value !== value)) return null;
+      at++;
+      return token;
+    };
+    const eatPunct = value => eat('punctuation', value);
+    const eatIdent = value => eat('identifier', value);
+    const eatDynIdent = () => {
+      const token = tokens[at];
+      if (!isDynamicIdentifier(token)) return null;
+      at++;
+      return token.value;
+    };
+    const eatString = expected => {
+      const token = tokens[at];
+      if (!token || token.type !== 'literal' ||
+          (token.value !== `"${expected}"` && token.value !== `'${expected}'`)) return null;
+      at++;
+      return token;
+    };
+
+    // 1. getInfiniteHistoryByChannel:(channelParam,startParam)=>(0,queryMod.queryProp)({
+    if (!eatIdent('getInfiniteHistoryByChannel') || !eatPunct(':') || !eatPunct('(')) return false;
+    const channelParam = eatDynIdent();
+    if (!channelParam || !eatPunct(',')) return false;
+    const startParam = eatDynIdent();
+    if (!startParam || startParam === channelParam || !eatPunct(')') || !eatPunct('=>')) return false;
+    if (!eatPunct('(') || !eat('number', '0') || !eatPunct(',')) return false;
+    const queryMod = eatDynIdent();
+    if (!queryMod || queryMod === channelParam || queryMod === startParam || !eatPunct('.')) return false;
+    const queryProp = eat('identifier');
+    if (!queryProp || (queryProp.value !== 'infiniteQueryOptions' && !isShortMinifiedExport(queryProp.value))) {
+      return false;
+    }
+    if (!eatPunct(')') || !eatPunct('(') || !eatPunct('{')) return false;
+
+    // 2. queryKey:["WebChatHistory","getHistoryByChannel",channelParam,startParam],
+    if (!eatIdent('queryKey') || !eatPunct(':') || !eatPunct('[') ||
+        !eatString('WebChatHistory') || !eatPunct(',') ||
+        !eatString('getHistoryByChannel') || !eatPunct(',') ||
+        !eatIdent(channelParam) || !eatPunct(',') ||
+        !eatIdent(startParam) || !eatPunct(']') || !eatPunct(',')) return false;
+
+    // 3. queryFn:({signal:sigParam,pageParam:pageParam})=>fetchFn(sigParam,channelParam,pageParam.start_time),
+    if (!eatIdent('queryFn') || !eatPunct(':') || !eatPunct('(') || !eatPunct('{') ||
+        !eatIdent('signal') || !eatPunct(':')) return false;
+    const sigParam = eatDynIdent();
+    if (!sigParam || sigParam === channelParam || !eatPunct(',') ||
+        !eatIdent('pageParam') || !eatPunct(':')) return false;
+    const pageParam = eatDynIdent();
+    if (!pageParam || pageParam === channelParam || pageParam === sigParam ||
+        !eatPunct('}') || !eatPunct(')') || !eatPunct('=>')) return false;
+    const fetchFn = eatDynIdent();
+    if (!fetchFn || fetchFn === sigParam || fetchFn === pageParam ||
+        fetchFn === channelParam || fetchFn === startParam || fetchFn === queryMod) return false;
+    if (!eatPunct('(') || !eatIdent(sigParam) || !eatPunct(',') ||
+        !eatIdent(channelParam) || !eatPunct(',') ||
+        !eatIdent(pageParam) || !eatPunct('.') || !eatIdent('start_time') ||
+        !eatPunct(')') || !eatPunct(',')) return false;
+
+    // 4. initialPageParam:{start_time:startParam},
+    if (!eatIdent('initialPageParam') || !eatPunct(':') || !eatPunct('{') ||
+        !eatIdent('start_time') || !eatPunct(':') || !eatIdent(startParam) ||
+        !eatPunct('}') || !eatPunct(',')) return false;
+
+    // 5. getNextPageParam:(lastPage,allPages,lastParam)=>{if(lastPage?.data)return{start_time:new Date(new Date(lastParam.start_time).getTime()+step).toISOString()}[;]}
+    if (!eatIdent('getNextPageParam') || !eatPunct(':') || !eatPunct('(')) return false;
+    const lastPage = eatDynIdent();
+    if (!lastPage || !eatPunct(',')) return false;
+    const allPages = eatDynIdent();
+    if (!allPages || allPages === lastPage || !eatPunct(',')) return false;
+    const lastParam = eatDynIdent();
+    if (!lastParam || lastParam === lastPage || lastParam === allPages ||
+        !eatPunct(')') || !eatPunct('=>') || !eatPunct('{')) return false;
+    if (!eatIdent('if') || !eatPunct('(') || !eatIdent(lastPage) || !eatPunct('?.') ||
+        !eatIdent('data') || !eatPunct(')') || !eatIdent('return') || !eatPunct('{') ||
+        !eatIdent('start_time') || !eatPunct(':') ||
+        !eatIdent('new') || !eatIdent('Date') || !eatPunct('(') ||
+        !eatIdent('new') || !eatIdent('Date') || !eatPunct('(') ||
+        !eatIdent(lastParam) || !eatPunct('.') || !eatIdent('start_time') || !eatPunct(')') ||
+        !eatPunct('.') || !eatIdent('getTime') || !eatPunct('(') || !eatPunct(')') ||
+        !eatPunct('+')) return false;
+    const step = eat('number');
+    if (!step || (step.value !== '5e3' && step.value !== '5000')) return false;
+    if (!eatPunct(')') || !eatPunct('.') || !eatIdent('toISOString') ||
+        !eatPunct('(') || !eatPunct(')') || !eatPunct('}')) return false;
+    eatPunct(';');
+    if (!eatPunct('}')) return false;
+
+    // 6. Optional trailing comma, closing }) followed by , or }
+    eatPunct(',');
+    if (!eatPunct('}') || !eatPunct(')')) return false;
+    const terminator = eat('punctuation');
+    return Boolean(terminator && (terminator.value === ',' || terminator.value === '}'));
   }
 
   function detectQueryContract(source) {
@@ -507,16 +694,8 @@
       return previous < 0 || source[previous] === ',' || source[previous] === '{';
     });
     if (declarations.length !== 1) return null;
-    const offset = declarations[0];
-    for (const expected of tokenizedQueryMethods) {
-      const candidate = tokenize(source.slice(offset), expected.length + 1);
-      if (candidate && candidate.length === expected.length + 1 &&
-          compareTokens(expected, candidate.slice(0, expected.length)) &&
-          candidate[expected.length].value === ',') {
-        return 'october-2026';
-      }
-    }
-    return null;
+    const tokens = tokenize(source.slice(declarations[0]), 128);
+    return matchQueryContract(tokens) ? 'october-2026' : null;
   }
 
   function escapeRegex(str) {
@@ -585,7 +764,7 @@
           hasDroppedBindingReferences(source, match.segmentEnd, adapter.dropped, match.mapping)) continue;
       if (!options.contractVerified)
         return { source, status: 'unchanged', reason: 'contract-unverified', adapter: adapter.id };
-      const replacement = adapter.build(source, match.mapping);
+      const replacement = adapter.build(source, match.mapping, match.matchedExports);
       return {
         source: source.slice(0, match.segmentStart) + replacement + source.slice(match.segmentEnd),
         status: 'applied',

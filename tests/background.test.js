@@ -560,3 +560,66 @@ test('real october-28 query chunk followed by october-28 replay module and call-
   assert.equal((await app.state()).status, 'applied');
   assert.equal(app.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'applied'), true);
 });
+
+test('november-23 query contract and replay module work both query-first with decoy and replay-first out of order', async () => {
+  const query = await readFile(new URL('./fixtures/november-23-query-contract.js', import.meta.url), 'utf8');
+  const replayModule = await readFile(new URL('./fixtures/november-23-module.js', import.meta.url), 'utf8');
+
+  // 1. Query-first with getInfiniteHistoryByChannelAndThread decoy chunk
+  const queryFirst = await makeBackground();
+  queryFirst.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const queryFilter = queryFirst.request('nov23-query');
+  queryFirst.emit(queryFilter, encoder.encode(query));
+  queryFilter.onstop();
+  await flush();
+  assert.equal(queryFilter.closed, true);
+  assert.equal(decoder.decode(queryFirst.joined(queryFilter)), query);
+
+  const decoyFilter = queryFirst.request('nov23-thread-decoy');
+  queryFirst.emit(decoyFilter, encoder.encode('export const m = { getInfiniteHistoryByChannelAndThread:(e,t)=>null };'));
+  decoyFilter.onstop();
+  await flush();
+  assert.equal(decoyFilter.closed, true);
+
+  const replayFilter = queryFirst.request('nov23-replay');
+  queryFirst.emit(replayFilter, encoder.encode(replayModule));
+  replayFilter.onstop();
+  await flush();
+  assert.equal(replayFilter.closed, true);
+  const queryFirstOut = decoder.decode(queryFirst.joined(replayFilter));
+  assert.match(queryFirstOut, /KCF_replay_state_v3/);
+  assert.equal((queryFirstOut.match(/ChatroomReplayEntries/g) || []).length, 2);
+  assert.equal((await queryFirst.state()).status, 'applied');
+  assert.equal(queryFirst.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'applied'), true);
+
+  // 2. Replay-first out-of-order arrival
+  const replayFirst = await makeBackground();
+  replayFirst.contentMessage({ type: 'ROUTE', isVod: true, routeSequence: 1 });
+
+  const pendingReplay = replayFirst.request('nov23-replay-first');
+  const replayBytes = encoder.encode(replayModule);
+  for (let offset = 0; offset < replayBytes.length; offset += 256) {
+    replayFirst.emit(pendingReplay, replayBytes.slice(offset, offset + 256));
+  }
+  pendingReplay.onstop();
+  await flush();
+  assert.equal(pendingReplay.closed, false, 'replay chunk waits for contract verification');
+  assert.equal(replayFirst.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'applied'), false);
+
+  const lateQuery = replayFirst.request('nov23-query-second');
+  const queryBytes = encoder.encode(query);
+  replayFirst.emit(lateQuery, queryBytes.slice(0, 128));
+  replayFirst.emit(lateQuery, queryBytes.slice(128));
+  lateQuery.onstop();
+  await flush();
+
+  assert.equal(lateQuery.closed, true);
+  assert.equal(decoder.decode(replayFirst.joined(lateQuery)), query);
+  assert.equal(pendingReplay.closed, true);
+  const replayFirstOut = decoder.decode(replayFirst.joined(pendingReplay));
+  assert.match(replayFirstOut, /KCF_replay_state_v3/);
+  assert.equal((replayFirstOut.match(/ChatroomReplayEntries/g) || []).length, 2);
+  assert.equal((await replayFirst.state()).status, 'applied');
+  assert.equal(replayFirst.sent.some(item => item.message?.type === 'PATCH_STATUS' && item.message.status === 'applied'), true);
+});
